@@ -7,16 +7,37 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     margin: 0; padding: 20px; background: var(--tg-theme-bg-color, #fff); color: var(--tg-theme-text-color, #111); }
   h1 { font-size: 20px; margin: 0 0 16px; }
+  h2 { font-size: 19px; margin: 0 0 14px; }
   .card { border: 1px solid rgba(128,128,128,.25); border-radius: 14px; padding: 16px; margin-bottom: 12px; }
   .muted { opacity: .6; font-size: 14px; }
-  .big { font-size: 28px; font-weight: 700; }
-  .row { display: flex; justify-content: space-between; margin: 6px 0; }
+  .big { font-size: 24px; font-weight: 700; margin: 4px 0; }
+  .row { display: flex; justify-content: space-between; gap: 12px; margin: 6px 0; font-size: 15px; }
+  .row span:first-child { opacity: .6; }
+  .row span:last-child { text-align: right; }
   .empty { text-align: center; padding: 40px 16px; opacity: .7; }
   button { width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 16px; font-weight: 600;
     background: var(--tg-theme-button-color, #2481cc); color: var(--tg-theme-button-text-color, #fff); margin-top: 10px; }
+  .btn-secondary { background: rgba(128,128,128,.15); color: var(--tg-theme-text-color, #111); }
+  .btn-row { display: flex; gap: 10px; }
+  .btn-row button { margin-top: 16px; }
+  .opt { border: 1px solid rgba(128,128,128,.25); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; cursor: pointer; }
+  .opt b { display: block; font-size: 16px; margin-bottom: 3px; }
+  input[type="text"], input[type="date"], textarea {
+    width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(128,128,128,.35);
+    background: transparent; color: var(--tg-theme-text-color, #111); font-size: 16px; font-family: inherit; }
+  textarea { min-height: 70px; resize: vertical; }
+  .chips { display: flex; gap: 8px; }
+  .chip { flex: 1; text-align: center; padding: 10px 6px; border-radius: 10px; border: 1px solid rgba(128,128,128,.35);
+    cursor: pointer; font-size: 14px; }
+  .err { color: #e5484d; font-size: 13px; min-height: 18px; margin-top: 6px; }
+  .progress { height: 4px; border-radius: 2px; background: rgba(128,128,128,.2); overflow: hidden; margin-bottom: 6px; }
+  .progress-fill { height: 100%; background: var(--tg-theme-button-color, #2481cc); transition: width .2s; }
+  .footer-nav { display: flex; justify-content: center; gap: 20px; margin-top: 24px; font-size: 14px; }
+  .footer-nav a { opacity: .6; text-decoration: underline; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -28,38 +49,239 @@
   tg?.ready();
   tg?.expand();
 
-  async function load() {
-    const initData = tg?.initData || "";
+  const API = "https://mparfxpddlkfuixminnx.supabase.co/functions/v1/miniapp";
+  const initData = tg?.initData || "";
+  const TYPES = { result: "Результат", habit: "Привычка", quit: "Отказ" };
+
+  let ctx = { user: null, bet: null, draft: {}, step: 0 };
+
+  function esc(s) { return (s || "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
+  function escAttr(s) { return esc(s).replace(/"/g, "&quot;"); }
+  function emptyMsg(t) { return '<div class="empty">' + t + "</div>"; }
+  function closeApp() { tg?.close(); }
+  window.closeApp = closeApp;
+
+  async function api(path, opts) {
+    opts = opts || {};
+    return fetch(API + path, {
+      ...opts,
+      headers: { "X-Init-Data": initData, "Content-Type": "application/json", ...(opts.headers || {}) },
+    });
+  }
+
+  async function boot() {
     const app = document.getElementById("app");
-    if (!initData) {
-      app.innerHTML = '<div class="empty">Открой это через кнопку в боте — вне Telegram приложение не работает.</div>';
-      return;
-    }
+    if (!initData) { app.innerHTML = emptyMsg("Открой это через кнопку в боте — вне Telegram приложение не работает."); return; }
     try {
-      const r = await fetch("https://mparfxpddlkfuixminnx.supabase.co/functions/v1/miniapp/status", { headers: { "X-Init-Data": initData } });
+      const r = await api("/status");
       const data = await r.json();
-      if (!r.ok) { app.innerHTML = '<div class="empty">Не удалось проверить — открой заново через бота.</div>'; return; }
-      if (!data.bet) {
-        app.innerHTML = '<div class="empty">Активной ставки нет.<br><br>Вернись в бота и дай слово — карточка появится здесь.</div>';
-        return;
-      }
-      const b = data.bet;
-      const left = Math.max(0, b.duration_days - b.day_n);
-      app.innerHTML = `
-        <div class="card">
-          <div class="muted">Карточка #${b.id}</div>
-          <div class="big">${b.goal}</div>
-          <div class="row"><span>День</span><span>${b.day_n} из ${b.duration_days}</span></div>
-          <div class="row"><span>До финиша</span><span>${left} дн.</span></div>
-          <div class="row"><span>Режим</span><span>${b.mode === "public" ? "Публично" : "Лично"}</span></div>
-        </div>
-        <div class="muted" style="text-align:center">Отправка отчёта и мастер новой ставки — скоро прямо здесь.</div>
-      `;
+      if (!r.ok) { app.innerHTML = emptyMsg("Не удалось проверить — открой заново через бота."); return; }
+      ctx.user = data.user; ctx.bet = data.bet;
+      renderHome();
     } catch (e) {
-      app.innerHTML = '<div class="empty">Ошибка соединения. Попробуй ещё раз.</div>';
+      app.innerHTML = emptyMsg("Ошибка соединения. Попробуй ещё раз.");
     }
   }
-  load();
+
+  function footerNav() {
+    return '<div class="footer-nav"><a onclick="showInfo()">Как это работает</a><a onclick="closeApp()">Поддержка — в чате</a></div>';
+  }
+  window.showInfo = function () {
+    document.getElementById("app").innerHTML =
+      '<div class="card">' +
+      "<p>Люди не достигают целей не потому, что не знают как. А потому, что за слив ничего не будет. Пообещал — забыл — никто не заметил.</p>" +
+      "<p>1. Записываешь видео: «Даю слово, что…»<br>2. Ставишь на кон своё слово<br>3. Отчитываешься каждый день<br>4. Дошёл — герой. Слился — все узнают, чего стоит твоё слово.</p>" +
+      "<p>Пропустил отчёт — слово не сдержано. Без запасных дней. Поэтому и работает.</p>" +
+      "</div><button onclick=\"renderHome()\">Назад</button>";
+  };
+
+  window.renderHome = function () {
+    const app = document.getElementById("app");
+    if (!ctx.user || !ctx.user.age) {
+      app.innerHTML = emptyMsg("Сначала пройди быстрый старт в чате бота — напиши боту /start.") + footerNav();
+      return;
+    }
+    if (ctx.bet) {
+      const b = ctx.bet;
+      const left = Math.max(0, b.duration_days - b.day_n);
+      app.innerHTML =
+        '<div class="card"><div class="muted">Карточка #' + b.id + "</div>" +
+        '<div class="big">' + esc(b.goal) + "</div>" +
+        '<div class="row"><span>День</span><span>' + b.day_n + " из " + b.duration_days + "</span></div>" +
+        '<div class="row"><span>До финиша</span><span>' + left + " дн.</span></div>" +
+        '<div class="row"><span>Режим</span><span>' + (b.mode === "public" ? "Публично" : "Лично") + "</span></div></div>" +
+        '<div class="muted" style="text-align:center;margin-bottom:16px">Отчёт по ставке — пока в чате бота.</div>' +
+        '<button onclick="closeApp()">Вернуться в чат</button>' + footerNav();
+      return;
+    }
+    app.innerHTML =
+      '<div class="empty"><div style="font-size:17px;margin-bottom:4px">Активной ставки нет.</div>' +
+      '<div class="muted">Готов проверить себя?</div></div>' +
+      '<button onclick="startWizard()">🚀 Дать слово</button>' + footerNav();
+  };
+
+  // ---------- мастер ставки ----------
+  window.startWizard = function () {
+    ctx.draft = { mode: null, type: null, goal: "", point_a: "", point_b: "", days: null, _date: "", witness: "" };
+    ctx.step = 0;
+    renderWizard();
+  };
+  function stepList() {
+    const s = ["mode", "type", "goal", "pointA", "pointB", "duration"];
+    if (ctx.draft.type === "quit") s.push("witness");
+    s.push("review");
+    return s;
+  }
+  function curName() { return stepList()[ctx.step]; }
+
+  window.renderWizard = function () {
+    const app = document.getElementById("app");
+    const d = ctx.draft;
+    const name = curName();
+    let body = "";
+    let showNext = true;
+
+    if (name === "mode") {
+      showNext = false;
+      body = "<h2>Как даёшь слово?</h2>" +
+        '<div class="opt" onclick="pick(\'mode\',\'public\')"><b>Публично</b><div class="muted">Заявление уходит в группу. На тебя смотрят, тебя поддерживают.</div></div>' +
+        '<div class="opt" onclick="pick(\'mode\',\'private\')"><b>Лично</b><div class="muted">Только ты и бот. Тихо, но по-настоящему.</div></div>';
+    } else if (name === "type") {
+      showNext = false;
+      body = "<h2>На что даёшь слово?</h2>" +
+        '<div class="opt" onclick="pick(\'type\',\'result\')"><b>Результат</b><div class="muted">Конкретная точка: минус 8 кг, накопить 300 000 ₽</div></div>' +
+        '<div class="opt" onclick="pick(\'type\',\'habit\')"><b>Привычка</b><div class="muted">Делать регулярно: 100 отжиманий в день</div></div>' +
+        '<div class="opt" onclick="pick(\'type\',\'quit\')"><b>Отказ</b><div class="muted">Прекратить: без алкоголя, без сладкого</div></div>';
+    } else if (name === "goal") {
+      body = "<h2>Цель</h2>" +
+        '<div class="muted" style="margin-bottom:10px">Одной фразой с цифрой и сроком. Шаблон: «Хочу … к …».</div>' +
+        '<textarea id="f-goal" placeholder="Хочу весить 85 кг к 1 октября">' + esc(d.goal) + "</textarea>" +
+        '<div id="f-err" class="err"></div>';
+    } else if (name === "pointA") {
+      body = "<h2>Точка А</h2>" +
+        '<div class="muted" style="margin-bottom:10px">Где ты сейчас? Число или короткое описание. Фото пруфа, если нужно, — потом в чате.</div>' +
+        '<input id="f-a" type="text" placeholder="Например: 93 кг" value="' + escAttr(d.point_a) + '">' +
+        '<div id="f-err" class="err"></div>';
+    } else if (name === "pointB") {
+      body = "<h2>Точка Б</h2>" +
+        '<div class="muted" style="margin-bottom:10px">Куда идём? Финиш цифрой.</div>' +
+        '<input id="f-b" type="text" placeholder="Например: 85 кг" value="' + escAttr(d.point_b) + '">' +
+        '<div id="f-err" class="err"></div>';
+    } else if (name === "duration") {
+      const min = new Date(Date.now() + 3 * 3600e3 + 864e5).toISOString().slice(0, 10);
+      body = "<h2>Срок</h2>" +
+        '<div class="chips">' +
+        '<div class="chip" onclick="pickDays(7)">7 дней</div>' +
+        '<div class="chip" onclick="pickDays(14)">14 дней</div>' +
+        '<div class="chip" onclick="pickDays(30)">30 дней</div></div>' +
+        '<div class="muted" style="margin:12px 0 6px">Или выбери дату:</div>' +
+        '<input id="f-date" type="date" min="' + min + '" value="' + d._date + '" onchange="pickDate(this.value)">' +
+        (d.days ? '<div class="muted" style="margin-top:8px">' + d.days + " дн." + "</div>" : "") +
+        '<div id="f-err" class="err"></div>';
+    } else if (name === "witness") {
+      body = "<h2>Свидетель</h2>" +
+        '<div class="muted" style="margin-bottom:10px">Отказ снаружи не виден. Нужен тот, кто видит тебя каждый день и подтвердит в конце: «Держал(а) слово?»</div>' +
+        '<input id="f-w" type="text" placeholder="@username" value="' + escAttr(d.witness) + '">' +
+        '<div id="f-err" class="err"></div>';
+    } else if (name === "review") {
+      body = "<h2>Проверь и вперёд</h2>" +
+        '<div class="card">' +
+        '<div class="row"><span>Режим</span><span>' + (d.mode === "public" ? "Публично" : "Лично") + "</span></div>" +
+        '<div class="row"><span>Тип</span><span>' + TYPES[d.type] + "</span></div>" +
+        '<div class="row"><span>Цель</span><span>' + esc(d.goal) + "</span></div>" +
+        '<div class="row"><span>Точка А</span><span>' + esc(d.point_a) + "</span></div>" +
+        '<div class="row"><span>Точка Б</span><span>' + esc(d.point_b) + "</span></div>" +
+        '<div class="row"><span>Срок</span><span>' + d.days + " дн.</span></div>" +
+        (d.type === "quit" ? '<div class="row"><span>Свидетель</span><span>' + esc(d.witness) + "</span></div>" : "") +
+        "</div>" +
+        '<div class="muted" style="text-align:center;margin-bottom:16px">Дальше — видео. Его нужно записать прямо в чате с ботом.</div>';
+    }
+
+    const back = ctx.step > 0
+      ? '<button class="btn-secondary" onclick="wizBack()">Назад</button>'
+      : '<button class="btn-secondary" onclick="renderHome()">Отмена</button>';
+    const nextBtn = showNext
+      ? '<button onclick="wizNext()">' + (name === "review" ? "Далее — видео" : "Далее") + "</button>"
+      : "";
+
+    app.innerHTML =
+      '<div class="progress"><div class="progress-fill" style="width:' + (((ctx.step + 1) / stepList().length) * 100) + '%"></div></div>' +
+      '<div class="muted" style="text-align:center;margin-bottom:16px">Шаг ' + (ctx.step + 1) + " из " + stepList().length + "</div>" +
+      body +
+      '<div class="btn-row">' + back + nextBtn + "</div>";
+  };
+
+  window.pick = function (key, val) { ctx.draft[key] = val; wizNext(); };
+  window.pickDays = function (n) {
+    const dt = new Date(Date.now() + 3 * 3600e3 + n * 864e5);
+    ctx.draft.days = n; ctx.draft._date = dt.toISOString().slice(0, 10);
+    renderWizard();
+  };
+  window.pickDate = function (v) {
+    const from = new Date(new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10) + "T00:00:00Z");
+    const to = new Date(v + "T00:00:00Z");
+    const days = Math.round((to - from) / 864e5);
+    ctx.draft.days = days; ctx.draft._date = v;
+    renderWizard();
+  };
+
+  function err(msg) { const e = document.getElementById("f-err"); if (e) e.textContent = msg; }
+
+  window.wizBack = function () { ctx.step--; renderWizard(); };
+
+  window.wizNext = async function () {
+    const d = ctx.draft;
+    const name = curName();
+    if (name === "mode" && !d.mode) return err("Выбери вариант.");
+    if (name === "type" && !d.type) return err("Выбери вариант.");
+    if (name === "goal") {
+      const v = document.getElementById("f-goal").value.trim();
+      if (!v) return err("Напиши цель.");
+      if (d.type !== "quit" && !/\d/.test(v)) return err("Добавь цифру или дату — как поймём, что дошёл?");
+      d.goal = v;
+    }
+    if (name === "pointA") {
+      const v = document.getElementById("f-a").value.trim();
+      if (!v) return err("Опиши, где ты сейчас.");
+      d.point_a = v;
+    }
+    if (name === "pointB") {
+      const v = document.getElementById("f-b").value.trim();
+      if (!v) return err("Напиши финиш.");
+      d.point_b = v;
+    }
+    if (name === "duration") {
+      if (!d.days || d.days < 1 || d.days > 365) return err("Выбери срок от 1 до 365 дней.");
+    }
+    if (name === "witness") {
+      const v = document.getElementById("f-w").value.trim();
+      if (!v.startsWith("@")) return err("Начни с @, например @ivanov.");
+      d.witness = v;
+    }
+    if (name === "review") { return submitDraft(); }
+    ctx.step++;
+    renderWizard();
+  };
+
+  async function submitDraft() {
+    const app = document.getElementById("app");
+    app.innerHTML = emptyMsg("Сохраняю…");
+    try {
+      const r = await api("/draft", { method: "POST", body: JSON.stringify(ctx.draft) });
+      const data = await r.json();
+      if (!r.ok) { app.innerHTML = emptyMsg("Не получилось сохранить (" + (data.error || "ошибка") + "). Вернись в чат и попробуй снова."); return; }
+      app.innerHTML =
+        '<div class="card" style="text-align:center">' +
+        '<div style="font-size:40px;margin-bottom:8px">🎥</div>' +
+        '<div style="font-size:17px;margin-bottom:10px">Осталось самое главное</div>' +
+        '<div class="muted">Вернись в чат с ботом и запиши видео — бот уже написал что.</div></div>' +
+        '<button onclick="closeApp()">Вернуться в чат</button>';
+    } catch (e) {
+      app.innerHTML = emptyMsg("Ошибка соединения. Попробуй ещё раз.");
+    }
+  }
+
+  boot();
 </script>
 </body>
 </html>
