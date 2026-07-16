@@ -73,10 +73,18 @@
 
   async function api(path, opts) {
     opts = opts || {};
-    return fetch(API + path, {
-      ...opts,
-      headers: { "X-Init-Data": initData, "Content-Type": "application/json", ...(opts.headers || {}) },
-    });
+    const isForm = opts.body instanceof FormData;
+    const headers = { "X-Init-Data": initData, ...(opts.headers || {}) };
+    if (!isForm) headers["Content-Type"] = "application/json";
+    return fetch(API + path, { ...opts, headers });
+  }
+
+  async function refreshStatus() {
+    try {
+      const r = await api("/status");
+      const data = await r.json();
+      if (r.ok) { ctx.user = data.user; ctx.bets = data.bets || []; }
+    } catch (e) { /* молча — следующий рендер попробует снова */ }
   }
 
   async function boot() {
@@ -148,6 +156,9 @@
       const active = b.persona === key ? " active" : "";
       return '<div class="persona-opt' + active + '" onclick="setPersona(' + b.id + ',\'' + key + '\')">' + PERSONAS[key] + "</div>";
     }).join("");
+    const stakeLine = b.stake > 0
+      ? (b.stake_paid ? b.stake + " ⭐ (оплачено)" : b.stake + " ⭐ (не оплачено)")
+      : "твоё слово";
     app.innerHTML =
       '<div class="card"><div class="muted">Карточка #' + b.id + "</div>" +
       '<div class="big">' + esc(b.goal) + "</div>" +
@@ -155,7 +166,8 @@
       '<div class="row"><span>Режим</span><span>' + (b.mode === "public" ? "Публично" : "Лично") + "</span></div>" +
       '<div class="row"><span>День</span><span>' + b.day_n + " из " + b.duration_days + "</span></div>" +
       '<div class="row"><span>До финиша</span><span>' + left + " дн.</span></div>" +
-      '<div class="row"><span>На кону</span><span>' + (b.stake ? b.stake + " ₽" : "твоё слово") + "</span></div></div>" +
+      '<div class="row"><span>На кону</span><span>' + stakeLine + "</span></div></div>" +
+      (b.stake > 0 && !b.stake_paid ? '<button onclick="payStake(' + b.id + "," + b.stake + ')">Оплатить ' + b.stake + " ⭐</button>" : "") +
       '<button onclick="sendReport(' + b.id + ')">Отправить отчёт</button>' +
       '<div class="muted" style="margin-top:18px">Сменить персонажа:</div>' +
       '<div class="persona-grid">' + personaGrid + "</div>" +
@@ -175,6 +187,29 @@
     }
   };
 
+  window.payStake = async function (betId, stake) {
+    const msgEl = document.getElementById("bet-msg");
+    if (msgEl) msgEl.textContent = "Открываю оплату…";
+    try {
+      const r = await api("/invoice", { method: "POST", body: JSON.stringify({ bet_id: betId, stake: stake }) });
+      const data = await r.json();
+      if (!r.ok || !data.invoice_link) { if (msgEl) msgEl.textContent = "Не получилось создать оплату."; return; }
+      if (!tg || typeof tg.openInvoice !== "function") { if (msgEl) msgEl.textContent = "Оплата недоступна в этой версии Telegram."; return; }
+      tg.openInvoice(data.invoice_link, function (status) {
+        if (status === "paid") {
+          const b = (ctx.bets || []).find(function (x) { return x.id === betId; });
+          if (b) b.stake_paid = true;
+          renderBetDetail();
+        } else {
+          const el = document.getElementById("bet-msg");
+          if (el) el.textContent = "Оплата не завершена.";
+        }
+      });
+    } catch (e) {
+      if (msgEl) msgEl.textContent = "Ошибка соединения.";
+    }
+  };
+
   window.setPersona = async function (betId, persona) {
     const msgEl = document.getElementById("bet-msg");
     if (msgEl) msgEl.textContent = "Сохраняю…";
@@ -190,15 +225,16 @@
   };
 
   // ---------- мастер ставки ----------
+  const MAX_VIDEO_BYTES = 20 * 1024 * 1024;
   window.startWizard = function () {
-    ctx.draft = { mode: null, type: null, goal: "", point_a: "", point_b: "", days: null, _date: "", witness: "" };
+    ctx.draft = { mode: null, type: null, goal: "", point_a: "", point_b: "", days: null, _date: "", witness: "", videoFile: null, videoPreviewUrl: null, stake: 0 };
     ctx.step = 0;
     renderWizard();
   };
   function stepList() {
     const s = ["mode", "type", "goal", "pointA", "pointB", "duration"];
     if (ctx.draft.type === "quit") s.push("witness");
-    s.push("review");
+    s.push("video", "stake", "review");
     return s;
   }
   function curName() { return stepList()[ctx.step]; }
@@ -252,6 +288,27 @@
         '<div class="muted" style="margin-bottom:10px">Отказ снаружи не виден. Нужен тот, кто видит тебя каждый день и подтвердит в конце: «Держал(а) слово?»</div>' +
         '<input id="f-w" type="text" placeholder="@username" value="' + escAttr(d.witness) + '">' +
         '<div id="f-err" class="err"></div>';
+    } else if (name === "video") {
+      const nameStr = (ctx.user && ctx.user.name) || "друг";
+      body = "<h2>Видео-клятва</h2>" +
+        '<div class="muted" style="margin-bottom:10px">Запиши на камеру или выбери готовое видео: «Я, ' + esc(nameStr) + ', даю слово, что ' + esc(d.goal) + '». От 15 секунд до 2 минут.' +
+        (d.mode === "public" ? " Видео будет опубликовано в группе." : " Видео останется между нами.") + "</div>" +
+        '<input id="f-video" type="file" accept="video/*" capture="user" onchange="handleVideoFile(this)">' +
+        (d.videoPreviewUrl
+          ? '<video src="' + d.videoPreviewUrl + '" controls playsinline style="width:100%;border-radius:12px;margin-top:10px"></video>'
+          : "") +
+        '<div id="f-err" class="err"></div>';
+    } else if (name === "stake") {
+      body = "<h2>Ставка</h2>" +
+        '<div class="muted" style="margin-bottom:10px">Сумма в Stars — сейчас тестовый режим. Символические 1–10 ⭐ дают почувствовать, что на кону не только слово.</div>' +
+        '<div class="chips">' +
+        '<div class="chip" onclick="pickStake(0)">Без ставки</div>' +
+        '<div class="chip" onclick="pickStake(1)">1 ⭐</div>' +
+        '<div class="chip" onclick="pickStake(5)">5 ⭐</div>' +
+        '<div class="chip" onclick="pickStake(10)">10 ⭐</div></div>' +
+        '<div class="muted" style="margin:12px 0 6px">Или своя сумма:</div>' +
+        '<input id="f-stake" type="text" inputmode="numeric" placeholder="Например: 25" value="' + (d.stake || "") + '" oninput="onStakeInput(this.value)">' +
+        '<div id="stake-note" class="muted" style="margin-top:8px">' + (d.stake ? d.stake + " ⭐ будет списано при подтверждении." : "Пока без ставки — только слово.") + "</div>";
     } else if (name === "review") {
       body = "<h2>Проверь и вперёд</h2>" +
         '<div class="card">' +
@@ -262,15 +319,17 @@
         '<div class="row"><span>Точка Б</span><span>' + esc(d.point_b) + "</span></div>" +
         '<div class="row"><span>Срок</span><span>' + d.days + " дн.</span></div>" +
         (d.type === "quit" ? '<div class="row"><span>Свидетель</span><span>' + esc(d.witness) + "</span></div>" : "") +
+        '<div class="row"><span>Видео</span><span>' + (d.videoFile ? "прикреплено ✓" : "нет") + "</span></div>" +
+        '<div class="row"><span>Ставка</span><span>' + (d.stake ? d.stake + " ⭐" : "без ставки") + "</span></div>" +
         "</div>" +
-        '<div class="muted" style="text-align:center;margin-bottom:16px">Дальше — видео. Его нужно записать прямо в чате с ботом.</div>';
+        '<div class="muted" style="text-align:center;margin-bottom:16px">Подтверждаешь — публикуем сразу, не выходя из приложения.</div>';
     }
 
     const back = ctx.step > 0
       ? '<button class="btn-secondary" onclick="wizBack()">Назад</button>'
       : '<button class="btn-secondary" onclick="renderHome()">Отмена</button>';
     const nextBtn = showNext
-      ? '<button onclick="wizNext()">' + (name === "review" ? "Далее — видео" : "Далее") + "</button>"
+      ? '<button onclick="wizNext()">' + (name === "review" ? "Дать слово" : "Далее") + "</button>"
       : "";
 
     app.innerHTML =
@@ -292,6 +351,30 @@
     const days = Math.round((to - from) / 864e5);
     ctx.draft.days = days; ctx.draft._date = v;
     renderWizard();
+  };
+
+  window.handleVideoFile = function (input) {
+    const f = input.files && input.files[0];
+    if (!f) return;
+    if (f.size > MAX_VIDEO_BYTES) { err("Видео слишком большое (максимум 20 МБ) — выбери покороче или в меньшем качестве."); input.value = ""; return; }
+    if (ctx.draft.videoPreviewUrl) URL.revokeObjectURL(ctx.draft.videoPreviewUrl);
+    ctx.draft.videoFile = f;
+    ctx.draft.videoPreviewUrl = URL.createObjectURL(f);
+    renderWizard();
+  };
+
+  window.pickStake = function (n) {
+    ctx.draft.stake = n;
+    const input = document.getElementById("f-stake");
+    if (input) input.value = n || "";
+    const note = document.getElementById("stake-note");
+    if (note) note.textContent = n ? n + " ⭐ будет списано при подтверждении." : "Пока без ставки — только слово.";
+  };
+  window.onStakeInput = function (v) {
+    const n = parseInt(v, 10);
+    ctx.draft.stake = Number.isFinite(n) && n > 0 ? Math.min(n, 2500) : 0;
+    const note = document.getElementById("stake-note");
+    if (note) note.textContent = ctx.draft.stake ? ctx.draft.stake + " ⭐ будет списано при подтверждении." : "Пока без ставки — только слово.";
   };
 
   function err(msg) { const e = document.getElementById("f-err"); if (e) e.textContent = msg; }
@@ -327,28 +410,69 @@
       if (!v.startsWith("@")) return err("Начни с @, например @ivanov.");
       d.witness = v;
     }
-    if (name === "review") { return submitDraft(); }
+    if (name === "video") {
+      if (!d.videoFile) return err("Прикрепи видео — без него слово не считается.");
+    }
+    if (name === "review") { return submitCreate(); }
     ctx.step++;
     renderWizard();
   };
 
-  async function submitDraft() {
+  async function submitCreate() {
     const app = document.getElementById("app");
-    app.innerHTML = emptyMsg("Сохраняю…");
+    app.innerHTML = emptyMsg("Публикую слово…");
     try {
-      const r = await api("/draft", { method: "POST", body: JSON.stringify(ctx.draft) });
+      const d = ctx.draft;
+      const fd = new FormData();
+      fd.append("draft", JSON.stringify({
+        mode: d.mode, type: d.type, goal: d.goal, point_a: d.point_a, point_b: d.point_b,
+        days: d.days, witness: d.witness || null, stake: d.stake || 0,
+      }));
+      fd.append("video", d.videoFile, d.videoFile.name || "video.mp4");
+      const r = await api("/create", { method: "POST", body: fd });
       const data = await r.json();
-      if (!r.ok) { app.innerHTML = emptyMsg("Не получилось сохранить (" + (data.error || "ошибка") + "). Вернись в чат и попробуй снова."); return; }
-      app.innerHTML =
-        '<div class="card" style="text-align:center">' +
-        '<div style="font-size:40px;margin-bottom:8px">🎥</div>' +
-        '<div style="font-size:17px;margin-bottom:10px">Осталось самое главное</div>' +
-        '<div class="muted">Вернись в чат с ботом и запиши видео — бот уже написал что.</div></div>' +
-        '<button onclick="closeApp()">Вернуться в чат</button>';
+      if (!r.ok) {
+        app.innerHTML = emptyMsg("Не получилось (" + (data.error || "ошибка") + "). Вернись и попробуй снова.") +
+          '<button onclick="renderWizard()">Назад к форме</button>';
+        return;
+      }
+      if (data.invoice_link) { openStakeInvoice(data.invoice_link, data.bet_id); }
+      else { finishWizard(data.bet_id, false, null); }
     } catch (e) {
-      app.innerHTML = emptyMsg("Ошибка соединения. Попробуй ещё раз.");
+      app.innerHTML = emptyMsg("Ошибка соединения. Попробуй ещё раз.") + '<button onclick="renderWizard()">Назад к форме</button>';
     }
   }
+
+  window.openStakeInvoice = function (link, betId) {
+    const app = document.getElementById("app");
+    app.innerHTML = emptyMsg("Открываю оплату…");
+    if (!tg || typeof tg.openInvoice !== "function") { finishWizard(betId, false, "unsupported"); return; }
+    tg.openInvoice(link, function (status) { finishWizard(betId, status === "paid", status); });
+  };
+
+  function finishWizard(betId, paid, status) {
+    const app = document.getElementById("app");
+    let note = "";
+    if (paid) note = '<div class="muted" style="text-align:center;margin-bottom:12px">⭐ Ставка оплачена.</div>';
+    else if (status && status !== "unsupported") note = '<div class="muted" style="text-align:center;margin-bottom:12px">Оплата не завершена — можно попробовать снова из карточки ставки.</div>';
+    app.innerHTML =
+      '<div class="card" style="text-align:center"><div style="font-size:40px;margin-bottom:8px">🎬</div>' +
+      '<div style="font-size:17px;margin-bottom:6px">Слово дано</div>' +
+      '<div class="muted">Карточка #' + betId + " создана" + (ctx.draft.mode === "public" ? " и опубликована в группе." : ".") + "</div></div>" +
+      note +
+      '<button onclick="goToPersonaAfterCreate(' + betId + ')">Выбрать персонажа</button>' +
+      '<button class="btn-secondary" onclick="reloadAndHome()">К списку ставок</button>';
+  }
+
+  window.goToPersonaAfterCreate = async function (betId) {
+    await refreshStatus();
+    ctx.selectedBetId = betId;
+    renderBetDetail();
+  };
+  window.reloadAndHome = async function () {
+    await refreshStatus();
+    renderHome();
+  };
 
   boot();
 </script>
