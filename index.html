@@ -289,15 +289,30 @@
         '<input id="f-w" type="text" placeholder="@username" value="' + escAttr(d.witness) + '">' +
         '<div id="f-err" class="err"></div>';
     } else if (name === "video") {
+      showNext = !!d.videoFile;
       const nameStr = (ctx.user && ctx.user.name) || "друг";
-      body = "<h2>Видео-клятва</h2>" +
-        '<div class="muted" style="margin-bottom:10px">Запиши на камеру или выбери готовое видео: «Я, ' + esc(nameStr) + ', даю слово, что ' + esc(d.goal) + '». От 15 секунд до 2 минут.' +
-        (d.mode === "public" ? " Видео будет опубликовано в группе." : " Видео останется между нами.") + "</div>" +
-        '<input id="f-video" type="file" accept="video/*" capture="user" onchange="handleVideoFile(this)">' +
-        (d.videoPreviewUrl
-          ? '<video src="' + d.videoPreviewUrl + '" controls playsinline style="width:100%;border-radius:12px;margin-top:10px"></video>'
-          : "") +
-        '<div id="f-err" class="err"></div>';
+      const promptLine = 'Скажи в камеру: «Я, ' + esc(nameStr) + ', даю слово, что ' + esc(d.goal) + '». От 15 секунд до 2 минут.' +
+        (d.mode === "public" ? " Видео будет опубликовано в группе." : " Видео останется между нами.");
+      if (d.videoFile) {
+        body = "<h2>Видео-клятва</h2>" +
+          '<div class="muted" style="margin-bottom:10px">' + promptLine + "</div>" +
+          '<video src="' + d.videoPreviewUrl + '" controls playsinline style="width:100%;border-radius:12px;background:#000"></video>' +
+          '<button class="btn-secondary" onclick="retakeVideo()">Переснять</button>' +
+          '<div id="f-err" class="err"></div>';
+      } else if (d.cameraError) {
+        body = "<h2>Видео-клятва</h2>" +
+          '<div class="muted" style="margin-bottom:10px">' + promptLine + "</div>" +
+          '<div class="empty">Камера недоступна: ' + esc(d.cameraError) + "<br>Можно прикрепить готовое видео.</div>" +
+          '<input id="f-video" type="file" accept="video/*" onchange="handleVideoFile(this)">' +
+          '<div id="f-err" class="err"></div>';
+      } else {
+        body = "<h2>Видео-клятва</h2>" +
+          '<div class="muted" style="margin-bottom:10px">' + promptLine + "</div>" +
+          '<video id="camera-preview" autoplay muted playsinline style="width:100%;border-radius:12px;background:#000"></video>' +
+          '<div id="rec-status" class="muted" style="text-align:center;margin-top:8px"></div>' +
+          '<button id="rec-btn" onclick="toggleRecording()">Записать</button>' +
+          '<div id="f-err" class="err"></div>';
+      }
     } else if (name === "stake") {
       body = "<h2>Ставка</h2>" +
         '<div class="muted" style="margin-bottom:10px">Сумма в Stars — сейчас тестовый режим. Символические 1–10 ⭐ дают почувствовать, что на кону не только слово.</div>' +
@@ -337,6 +352,11 @@
       '<div class="muted" style="text-align:center;margin-bottom:16px">Шаг ' + (ctx.step + 1) + " из " + stepList().length + "</div>" +
       body +
       '<div class="btn-row">' + back + nextBtn + "</div>";
+
+    // живая камера нужна только на шаге "video", пока не записано и камера не отказала —
+    // на любом другом шаге (или при повторном заходе) сначала гасим прошлый поток
+    stopCamera();
+    if (name === "video" && !d.videoFile && !d.cameraError) startCamera();
   };
 
   window.pick = function (key, val) { ctx.draft[key] = val; wizNext(); };
@@ -360,6 +380,94 @@
     if (ctx.draft.videoPreviewUrl) URL.revokeObjectURL(ctx.draft.videoPreviewUrl);
     ctx.draft.videoFile = f;
     ctx.draft.videoPreviewUrl = URL.createObjectURL(f);
+    renderWizard();
+  };
+
+  // ---------- живая запись видео (getUserMedia + MediaRecorder) ----------
+  // По умолчанию — только камера, без выбора старого файла из галереи: это единственный
+  // способ подтвердить, что клятва даётся "здесь и сейчас", а не переиспользуется старое видео.
+  // Файловый пикер — лишь запасной путь, если браузер/клиент не даёт доступ к камере.
+  let cameraStream = null;
+  let mediaRecorder = null;
+  let recordedChunks = [];
+  let recTimer = null;
+
+  function stopCamera() {
+    if (recTimer) { clearInterval(recTimer); recTimer = null; }
+    if (mediaRecorder && mediaRecorder.state === "recording") { try { mediaRecorder.stop(); } catch (e) {} }
+    mediaRecorder = null;
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(function (t) { t.stop(); });
+      cameraStream = null;
+    }
+  }
+
+  async function startCamera() {
+    const videoEl = document.getElementById("camera-preview");
+    if (!videoEl || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      ctx.draft.cameraError = "не поддерживается этим браузером";
+      renderWizard();
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true });
+      cameraStream = stream;
+      videoEl.srcObject = stream;
+    } catch (e) {
+      ctx.draft.cameraError = (e && e.message) ? e.message : "нет доступа к камере";
+      renderWizard();
+    }
+  }
+
+  window.toggleRecording = function () {
+    const btn = document.getElementById("rec-btn");
+    const status = document.getElementById("rec-status");
+    if (!mediaRecorder || mediaRecorder.state === "inactive") {
+      if (!cameraStream) return;
+      recordedChunks = [];
+      const candidates = ["video/mp4", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"];
+      const mimeType = candidates.find(function (m) {
+        return window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m);
+      }) || "";
+      try {
+        mediaRecorder = mimeType ? new MediaRecorder(cameraStream, { mimeType: mimeType }) : new MediaRecorder(cameraStream);
+      } catch (e) {
+        err("Запись видео не поддерживается в этом Telegram-клиенте.");
+        return;
+      }
+      mediaRecorder.ondataavailable = function (e) { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
+      mediaRecorder.onstop = function () {
+        if (recTimer) { clearInterval(recTimer); recTimer = null; }
+        const blob = new Blob(recordedChunks, { type: mediaRecorder && mediaRecorder.mimeType || "video/webm" });
+        if (blob.size === 0) { err("Не удалось записать видео. Попробуй ещё раз."); return; }
+        if (blob.size > MAX_VIDEO_BYTES) { err("Видео получилось больше 20 МБ — запиши покороче."); return; }
+        const ext = blob.type.indexOf("mp4") !== -1 ? "mp4" : "webm";
+        if (ctx.draft.videoPreviewUrl) URL.revokeObjectURL(ctx.draft.videoPreviewUrl);
+        ctx.draft.videoFile = new File([blob], "oath." + ext, { type: blob.type });
+        ctx.draft.videoPreviewUrl = URL.createObjectURL(blob);
+        stopCamera();
+        renderWizard();
+      };
+      mediaRecorder.start();
+      let secs = 0;
+      if (status) status.textContent = "● Запись — 0:00";
+      recTimer = setInterval(function () {
+        secs++;
+        if (status) status.textContent = "● Запись — " + Math.floor(secs / 60) + ":" + String(secs % 60).padStart(2, "0");
+        if (secs >= 120 && mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
+      }, 1000);
+      if (btn) btn.textContent = "Стоп";
+    } else {
+      mediaRecorder.stop();
+      if (btn) btn.textContent = "Записать";
+    }
+  };
+
+  window.retakeVideo = function () {
+    if (ctx.draft.videoPreviewUrl) { URL.revokeObjectURL(ctx.draft.videoPreviewUrl); }
+    ctx.draft.videoFile = null;
+    ctx.draft.videoPreviewUrl = null;
+    ctx.draft.cameraError = null;
     renderWizard();
   };
 
