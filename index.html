@@ -63,7 +63,7 @@
   const TYPES = { result: "Результат", habit: "Привычка", quit: "Отказ" };
   const PERSONAS = { confucius: "Конфуций", arnold: "Фитнес Арнольд", zina: "Баба Зина 🔞", angela: "Анджела Фокс" };
 
-  let ctx = { user: null, bets: [], draft: {}, step: 0 };
+  let ctx = { user: null, bets: [], pending: [], draft: {}, step: 0 };
 
   function esc(s) { return (s || "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
   function escAttr(s) { return esc(s).replace(/"/g, "&quot;"); }
@@ -83,7 +83,7 @@
     try {
       const r = await api("/status");
       const data = await r.json();
-      if (r.ok) { ctx.user = data.user; ctx.bets = data.bets || []; }
+      if (r.ok) { ctx.user = data.user; ctx.bets = data.bets || []; ctx.pending = data.pending || []; }
     } catch (e) { /* молча — следующий рендер попробует снова */ }
   }
 
@@ -94,7 +94,7 @@
       const r = await api("/status");
       const data = await r.json();
       if (!r.ok) { app.innerHTML = emptyMsg("Не удалось проверить — открой заново через бота."); return; }
-      ctx.user = data.user; ctx.bets = data.bets || [];
+      ctx.user = data.user; ctx.bets = data.bets || []; ctx.pending = data.pending || [];
       renderHome();
     } catch (e) {
       app.innerHTML = emptyMsg("Ошибка соединения. Попробуй ещё раз.");
@@ -120,7 +120,20 @@
       return;
     }
     const bets = ctx.bets || [];
+    const pending = ctx.pending || [];
     let html = "";
+    if (pending.length) {
+      html += '<div class="muted" style="margin-bottom:10px">Ждут оплаты, чтобы стать словом:</div>';
+      html += pending.map(function (p) {
+        return '<div class="bet-card" style="border-style:dashed">' +
+          '<div class="top"><div class="goal">' + esc(p.goal) + '</div>' +
+          '<div class="badge">⏳ #' + p.id + "</div></div>" +
+          '<div class="meta">' + TYPES[p.type] + " · " + (p.mode === "public" ? "Публично" : "Лично") + "</div>" +
+          '<div class="meta">Видео записано. Без ' + p.stake + ' ⭐ карточка не публикуется.</div>' +
+          '<button onclick="payPendingStake(' + p.id + "," + p.stake + ')">Оплатить ' + p.stake + " ⭐ и опубликовать</button>" +
+          "</div>";
+      }).join("");
+    }
     if (bets.length) {
       html += '<div class="muted" style="margin-bottom:10px">' +
         (bets.length === 1 ? "Твоя активная ставка:" : "Твои активные ставки (" + bets.length + "):") + "</div>";
@@ -133,7 +146,7 @@
           " · День " + b.day_n + " из " + b.duration_days + " · ещё " + left + " дн.</div>" +
           '<div class="meta">Персонаж: ' + (PERSONAS[b.persona] || "не выбран") + "</div></div>";
       }).join("");
-    } else {
+    } else if (!pending.length) {
       html += '<div class="empty"><div style="font-size:17px;margin-bottom:4px">Активных ставок нет.</div>' +
         '<div class="muted">Готов проверить себя?</div></div>';
     }
@@ -210,6 +223,41 @@
     }
   };
 
+  // ждём, пока вебхук бота обработает successful_payment и переведёт ставку в active —
+  // это отдельный апдейт от Telegram, приходит почти сразу, но не мгновенно
+  async function pollUntilActive(betId, tries, delayMs) {
+    for (let i = 0; i < tries; i++) {
+      await new Promise(function (res) { setTimeout(res, delayMs); });
+      await refreshStatus();
+      if ((ctx.bets || []).some(function (b) { return b.id === betId; })) return true;
+      if (!(ctx.pending || []).some(function (p) { return p.id === betId; })) return true; // ушла из pending — не наша забота как именно
+    }
+    return false;
+  }
+
+  window.payPendingStake = async function (betId, stake) {
+    const app = document.getElementById("app");
+    app.innerHTML = emptyMsg("Открываю оплату…");
+    try {
+      const r = await api("/invoice", { method: "POST", body: JSON.stringify({ bet_id: betId, stake: stake }) });
+      const data = await r.json();
+      if (!r.ok || !data.invoice_link) { await refreshStatus(); renderHome(); return; }
+      if (!tg || typeof tg.openInvoice !== "function") { await refreshStatus(); renderHome(); return; }
+      tg.openInvoice(data.invoice_link, async function (status) {
+        if (status === "paid") {
+          app.innerHTML = emptyMsg("Оплата прошла — публикую…");
+          await pollUntilActive(betId, 8, 1200);
+        } else {
+          await refreshStatus();
+        }
+        renderHome();
+      });
+    } catch (e) {
+      await refreshStatus();
+      renderHome();
+    }
+  };
+
   window.setPersona = async function (betId, persona) {
     const msgEl = document.getElementById("bet-msg");
     if (msgEl) msgEl.textContent = "Сохраняю…";
@@ -264,7 +312,7 @@
         '<div id="f-err" class="err"></div>';
     } else if (name === "pointA") {
       body = "<h2>Точка А</h2>" +
-        '<div class="muted" style="margin-bottom:10px">Где ты сейчас? Число или короткое описание. Фото пруфа, если нужно, — потом в чате.</div>' +
+        '<div class="muted" style="margin-bottom:10px">Где ты сейчас? Число или короткое описание — просто текстом.</div>' +
         '<input id="f-a" type="text" placeholder="Например: 93 кг" value="' + escAttr(d.point_a) + '">' +
         '<div id="f-err" class="err"></div>';
     } else if (name === "pointB") {
@@ -337,7 +385,9 @@
         '<div class="row"><span>Видео</span><span>' + (d.videoFile ? "прикреплено ✓" : "нет") + "</span></div>" +
         '<div class="row"><span>Ставка</span><span>' + (d.stake ? d.stake + " ⭐" : "без ставки") + "</span></div>" +
         "</div>" +
-        '<div class="muted" style="text-align:center;margin-bottom:16px">Подтверждаешь — публикуем сразу, не выходя из приложения.</div>';
+        '<div class="muted" style="text-align:center;margin-bottom:16px">' +
+        (d.stake ? "Подтверждаешь — сразу откроется оплата " + d.stake + " ⭐. Карточка публикуется сразу после оплаты, не выходя из приложения." : "Подтверждаешь — публикуем сразу, не выходя из приложения.") +
+        "</div>";
     }
 
     const back = ctx.step > 0
@@ -544,25 +594,53 @@
           '<button onclick="renderWizard()">Назад к форме</button>';
         return;
       }
-      if (data.invoice_link) { openStakeInvoice(data.invoice_link, data.bet_id); }
+      if (data.pending) { openStakeInvoice(data.invoice_link, data.bet_id); }
       else { finishWizard(data.bet_id, false, null); }
     } catch (e) {
       app.innerHTML = emptyMsg("Ошибка соединения. Попробуй ещё раз.") + '<button onclick="renderWizard()">Назад к форме</button>';
     }
   }
 
+  // ставка > 0: карточка ЕЩЁ НЕ существует для остальных — она публикуется только после
+  // того, как звёзды реально списаны (подтверждение приходит на вебхук бота отдельным
+  // апдейтом, поэтому после tg.openInvoice() дожидаемся, пока ставка станет active).
   window.openStakeInvoice = function (link, betId) {
     const app = document.getElementById("app");
+    if (!link) {
+      app.innerHTML = emptyMsg("Не удалось создать оплату. Ставка сохранена как «ждёт оплаты» — попробуй ещё раз из списка ставок.") +
+        '<button class="btn-secondary" onclick="reloadAndHome()">К списку ставок</button>';
+      return;
+    }
     app.innerHTML = emptyMsg("Открываю оплату…");
-    if (!tg || typeof tg.openInvoice !== "function") { finishWizard(betId, false, "unsupported"); return; }
-    tg.openInvoice(link, function (status) { finishWizard(betId, status === "paid", status); });
+    if (!tg || typeof tg.openInvoice !== "function") {
+      app.innerHTML = emptyMsg("Оплата недоступна в этой версии Telegram. Ставка сохранена как «ждёт оплаты».") +
+        '<button class="btn-secondary" onclick="reloadAndHome()">К списку ставок</button>';
+      return;
+    }
+    tg.openInvoice(link, async function (status) {
+      if (status === "paid") {
+        app.innerHTML = emptyMsg("Оплата прошла — публикую карточку…");
+        const ok = await pollUntilActive(betId, 8, 1200);
+        finishWizard(betId, true, ok ? "active" : "processing");
+      } else {
+        finishWizard(betId, false, status);
+      }
+    });
   };
 
   function finishWizard(betId, paid, status) {
     const app = document.getElementById("app");
-    let note = "";
-    if (paid) note = '<div class="muted" style="text-align:center;margin-bottom:12px">⭐ Ставка оплачена.</div>';
-    else if (status && status !== "unsupported") note = '<div class="muted" style="text-align:center;margin-bottom:12px">Оплата не завершена — можно попробовать снова из карточки ставки.</div>';
+    if (!paid) {
+      app.innerHTML =
+        '<div class="card" style="text-align:center"><div style="font-size:40px;margin-bottom:8px">⏳</div>' +
+        '<div style="font-size:17px;margin-bottom:6px">Видео записано, но не опубликовано</div>' +
+        '<div class="muted">Оплата не завершена — карточка #' + betId + " появится, как только оплатишь ставку. Она ждёт тебя в списке ставок." + "</div></div>" +
+        '<button class="btn-secondary" onclick="reloadAndHome()">К списку ставок</button>';
+      return;
+    }
+    const note = status === "processing"
+      ? '<div class="muted" style="text-align:center;margin-bottom:12px">⭐ Оплата подтверждается — карточка появится в группе в течение минуты.</div>'
+      : '<div class="muted" style="text-align:center;margin-bottom:12px">⭐ Ставка оплачена.</div>';
     app.innerHTML =
       '<div class="card" style="text-align:center"><div style="font-size:40px;margin-bottom:8px">🎬</div>' +
       '<div style="font-size:17px;margin-bottom:6px">Слово дано</div>' +
