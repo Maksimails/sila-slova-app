@@ -623,7 +623,7 @@
         return;
       }
       if (data.pending) { openStakeInvoice(data.invoice_link, data.bet_id); }
-      else { finishWizard(data.bet_id, false, null); }
+      else { await refreshStatus(); finishWizard(data.bet_id, true, null); }
     } catch (e) {
       app.innerHTML = emptyMsg("Ошибка соединения. Попробуй ещё раз.") + '<button onclick="renderWizard()">Назад к форме</button>';
     }
