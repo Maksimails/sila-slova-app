@@ -66,6 +66,43 @@
   .name-confucius { font-family: 'Playfair Display', serif; font-style: italic; font-weight: 600; color: #f2e6c8; }
   .name-angela { font-family: 'Underdog', cursive; color: #ffb6d5;
     text-shadow: 0 1px 0 #7a2a4d, 0 2px 0 #6a2242, 0 3px 4px rgba(0,0,0,.7); font-size: 17px !important; }
+
+  /* ---------- профиль игрока ---------- */
+  .profile-header { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+  .avatar-wrap { position: relative; width: 72px; height: 72px; border-radius: 50%; overflow: hidden;
+    border: 2px solid var(--gold); flex-shrink: 0; cursor: pointer; background: var(--panel);
+    display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; color: var(--gold2); }
+  .avatar-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .avatar-wrap .avatar-edit { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,.6);
+    font-size: 9px; text-align: center; padding: 3px 0; letter-spacing: .02em; }
+  .profile-name { font-size: 19px; font-weight: 700; }
+  .level-badge { display: inline-block; background: linear-gradient(135deg, var(--gold), #c8862f); color: #1a1200;
+    font-weight: 700; font-size: 12px; padding: 2px 9px; border-radius: 20px; margin-top: 5px; }
+  .section-title { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em;
+    margin: 18px 0 8px; }
+  .bar-label { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-bottom: 5px; }
+  .bar-label b { color: var(--text); font-weight: 600; }
+  .bar-track { height: 8px; border-radius: 6px; background: #22242b; overflow: hidden; margin-bottom: 14px; }
+  .bar-fill { height: 100%; border-radius: 6px; }
+  .bar-fill.trust { background: linear-gradient(90deg, #4a7a5a, #6fae82); }
+  .bar-fill.drive { background: linear-gradient(90deg, var(--gold), var(--gold2)); }
+  .bar-fill.xp { background: linear-gradient(90deg, #7a5ac8, #a48ee8); }
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 6px; }
+  .stat-box { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 10px 6px; text-align: center; }
+  .stat-box .num { font-size: 19px; font-weight: 700; color: var(--gold2); }
+  .stat-box .lbl { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+  .bond-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .bond-row:last-child { border-bottom: none; }
+  .bond-row img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+  .bond-row .bname { font-size: 14px; flex: 1; }
+  .bond-row .blvl { font-size: 12px; color: var(--gold2); white-space: nowrap; }
+  .medal-shelf { display: flex; flex-wrap: wrap; gap: 10px; }
+  .medal { width: 58px; text-align: center; font-size: 10.5px; color: var(--muted); }
+  .medal .micon { font-size: 26px; display: block; margin-bottom: 3px; }
+  .medal.locked .micon { filter: grayscale(1) brightness(.55); }
+  .medal.locked { opacity: .7; }
+  .hardest-card { display: flex; align-items: center; gap: 10px; }
+  .hardest-card .hicon { font-size: 26px; }
 </style>
 </head>
 <body>
@@ -125,7 +162,7 @@
   }
 
   function footerNav() {
-    return '<div class="footer-nav"><a onclick="showInfo()">Как это работает</a><a onclick="closeApp()">Поддержка — в чате</a></div>';
+    return '<div class="footer-nav"><a onclick="renderProfile()">👤 Профиль</a><a onclick="showInfo()">Как это работает</a><a onclick="closeApp()">Поддержка — в чате</a></div>';
   }
   window.showInfo = function () {
     document.getElementById("app").innerHTML =
@@ -686,6 +723,131 @@
   window.reloadAndHome = async function () {
     await refreshStatus();
     renderHome();
+  };
+
+  // ---------- профиль игрока ----------
+  const MEDAL_LOCKED_ICON = "🔒";
+  const XP_PER_LEVEL_CLIENT = 300; // держим в синхроне со значением на бэкенде — только для рисования полоски
+
+  window.renderProfile = async function () {
+    const app = document.getElementById("app");
+    app.innerHTML = emptyMsg("Загружаю профиль…");
+    try {
+      const r = await api("/profile");
+      const data = await r.json();
+      if (!r.ok) { app.innerHTML = emptyMsg("Не удалось загрузить профиль.") + '<button class="btn-secondary" onclick="renderHome()">Назад</button>'; return; }
+      ctx.profile = data;
+      drawProfile();
+    } catch (e) {
+      app.innerHTML = emptyMsg("Ошибка соединения.") + '<button class="btn-secondary" onclick="renderHome()">Назад</button>';
+    }
+  };
+
+  function drawProfile() {
+    const app = document.getElementById("app");
+    const p = ctx.profile;
+    const u = p.user;
+    const initial = (u.name || "?").trim().charAt(0).toUpperCase();
+    const avatarInner = u.avatar_url
+      ? '<img src="' + escAttr(u.avatar_url) + '" alt="">'
+      : initial;
+
+    const trustPct = Math.max(0, Math.min(100, p.trust_level));
+    const drivePct = Math.max(0, Math.min(100, p.drive_level * 20));
+    const xpInLevel = p.xp % XP_PER_LEVEL_CLIENT;
+    const xpPct = Math.max(2, Math.min(100, Math.round((xpInLevel / XP_PER_LEVEL_CLIENT) * 100)));
+
+    const stats = p.stats || {};
+    const statItems = [
+      [stats.total, "ставок всего"], [stats.kept, "сдержано"], [stats.failed, "не сдержано"],
+      [stats.active, "сейчас активно"], [stats.public, "публичных"],
+      [stats.best_streak, "лучшая серия"], [stats.current_streak, "текущая серия"],
+    ];
+    const statGrid = statItems.map(function (s) {
+      return '<div class="stat-box"><div class="num">' + (s[0] ?? 0) + '</div><div class="lbl">' + s[1] + "</div></div>";
+    }).join("");
+
+    const bonds = (p.persona_bonds || []).slice().sort(function (a, b) { return b.bond_xp - a.bond_xp; });
+    const bondRows = bonds.length
+      ? bonds.map(function (b) {
+          const img = PERSONA_IMG[b.persona] || "";
+          const label = (PERSONAS[b.persona] || b.persona).replace(" 🔞", "");
+          return '<div class="bond-row">' + (img ? '<img src="' + img + '" alt="">' : "") +
+            '<div class="bname">' + esc(label) + '</div><div class="blvl">Ур. ' + b.bond_level + " · " + b.bond_xp + " XP</div></div>";
+        }).join("")
+      : '<div class="muted">Пока нет сопровождения — персонаж появится после первого отчёта.</div>';
+
+    const earned = (p.medals_earned || []).map(function (m) {
+      return '<div class="medal"><span class="micon">' + esc(m.icon || "🏅") + '</span>' + esc(m.name) + "</div>";
+    }).join("");
+    const locked = (p.medals_locked || []).map(function (m) {
+      return '<div class="medal locked"><span class="micon">' + MEDAL_LOCKED_ICON + '</span>' + esc(m.name) + "</div>";
+    }).join("");
+    const hiddenNote = p.medals_hidden_count
+      ? '<div class="muted" style="margin-top:8px">+' + p.medals_hidden_count + " скрытых медалей — условия неизвестны.</div>"
+      : "";
+
+    const hardest = p.hardest_bet
+      ? '<div class="card hardest-card"><div class="hicon">🏔️</div><div>' +
+        '<div class="muted" style="font-size:12px">Самая сложная сдержанная ставка</div>' +
+        '<div style="font-weight:600">' + esc(p.hardest_bet.goal) + "</div>" +
+        '<div class="muted" style="font-size:12px">' + (p.hardest_bet.stake ? p.hardest_bet.stake + " ⭐ · " : "") + p.hardest_bet.duration_days + " дн.</div>" +
+        "</div></div>"
+      : "";
+
+    app.innerHTML =
+      '<input id="avatar-file" type="file" accept="image/*" style="display:none" onchange="handleAvatarFile(this)">' +
+      '<div class="profile-header">' +
+      '<div class="avatar-wrap" onclick="triggerAvatarUpload()">' + avatarInner + '<div class="avatar-edit">сменить</div></div>' +
+      "<div><div class=\"profile-name\">" + esc(u.name) + "</div>" +
+      '<div class="level-badge">Уровень ' + p.level + "</div></div></div>" +
+
+      '<div class="bar-label"><span>Trust</span><b>' + trustPct + "%</b></div>" +
+      '<div class="bar-track"><div class="bar-fill trust" style="width:' + trustPct + '%"></div></div>' +
+      '<div class="bar-label"><span>Drive</span><b>Ур. ' + p.drive_level + " · " + p.drive_recent_bets + " за 30 дн.</b></div>" +
+      '<div class="bar-track"><div class="bar-fill drive" style="width:' + drivePct + '%"></div></div>' +
+      '<div class="bar-label"><span>Опыт</span><b>' + p.xp + " XP · до след. уровня " + p.xp_to_next + "</b></div>" +
+      '<div class="bar-track"><div class="bar-fill xp" style="width:' + xpPct + '%"></div></div>' +
+
+      hardest +
+
+      '<div class="section-title">Статистика</div>' +
+      '<div class="stat-grid">' + statGrid + "</div>" +
+
+      '<div class="section-title">Персонажи</div>' +
+      bondRows +
+
+      '<div class="section-title">Медали</div>' +
+      '<div class="medal-shelf">' + earned + locked + "</div>" +
+      hiddenNote +
+
+      '<button class="btn-secondary" onclick="renderHome()" style="margin-top:20px">К списку ставок</button>';
+  }
+
+  window.triggerAvatarUpload = function () {
+    const el = document.getElementById("avatar-file");
+    if (el) el.click();
+  };
+
+  window.handleAvatarFile = async function (input) {
+    const f = input.files && input.files[0];
+    if (!f) return;
+    if (f.size > 5 * 1024 * 1024) { alert("Фото слишком большое — максимум 5 МБ."); input.value = ""; return; }
+    try {
+      const fd = new FormData();
+      fd.append("photo", f, f.name || "avatar.jpg");
+      const r = await api("/avatar", { method: "POST", body: fd });
+      const data = await r.json();
+      if (r.ok && data.avatar_url) {
+        ctx.profile.user.avatar_url = data.avatar_url;
+        ctx.profile.user.avatar_source = "custom";
+        drawProfile();
+      } else {
+        alert("Не получилось загрузить фото. Попробуй ещё раз.");
+      }
+    } catch (e) {
+      alert("Ошибка соединения. Попробуй ещё раз.");
+    }
   };
 
   boot();
