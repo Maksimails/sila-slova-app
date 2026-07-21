@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Сила Слова — здесь слово имеет цену</title>
+<meta name="description" content="Дай слово на камеру. Поставь на кон то, что для тебя дорого. Держи — или все узнают, чего оно стоило. Только ты против тебя." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0d10; --panel: #16181d; --panel2: #1c1f26; --border: #2a2d35; --text: #eceef2;
+    --muted: #90959f; --gold: #e8b04b; --gold2: #f2c86b;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow-x: hidden;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 22px; }
+  .eyebrow { font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: .18em; text-transform: uppercase;
+    font-size: 12px; color: var(--gold2); text-align: center; margin-bottom: 14px; }
+  h1, h2, h3 { font-family: 'Playfair Display', serif; margin: 0; }
+  .muted { color: var(--muted); }
+
+  /* ---------- фоновый саундтрек ---------- */
+  #sound-toggle {
+    position: fixed; top: 16px; right: 16px; z-index: 50;
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(22,24,29,.75); backdrop-filter: blur(6px);
+    border: 1px solid var(--border); border-radius: 30px; padding: 8px 14px 8px 10px;
+    font-size: 12px; color: var(--muted); cursor: pointer; user-select: none;
+    transition: border-color .2s, color .2s;
+  }
+  #sound-toggle:hover { border-color: var(--gold); color: var(--gold2); }
+  #sound-toggle .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  #sound-toggle.playing .dot { background: var(--gold); box-shadow: 0 0 8px var(--gold); animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
+  /* ---------- hero ---------- */
+  .hero { min-height: 100svh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 100px 22px 60px; position: relative; }
+  .hero::before { content: ""; position: absolute; inset: 0; z-index: -1;
+    background: radial-gradient(ellipse 60% 50% at 50% 20%, rgba(232,176,75,.10), transparent 70%); }
+  .hero h1 { font-size: clamp(30px, 7vw, 52px); line-height: 1.14; font-weight: 700; letter-spacing: -.01em; }
+  .hero h1 em { font-style: italic; color: var(--gold2); }
+  .hero .sub { margin-top: 22px; font-size: clamp(16px, 2.6vw, 19px); color: var(--muted); max-width: 480px; line-height: 1.55; }
+  .hero .tagline { margin-top: 30px; font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; font-size: 14px; color: var(--gold); }
+
+  .cta-row { display: flex; flex-direction: column; gap: 12px; align-items: center; margin-top: 38px; width: 100%; max-width: 340px; }
+  .btn { display: block; width: 100%; text-align: center; text-decoration: none; padding: 16px 20px; border-radius: 14px;
+    font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 16px; letter-spacing: .02em; }
+  .btn-primary { background: linear-gradient(135deg, var(--gold), #c8862f); color: #1a1200;
+    box-shadow: 0 8px 30px -8px rgba(232,176,75,.55); }
+  .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn-secondary:hover { border-color: var(--gold); color: var(--gold2); }
+  .scroll-hint { margin-top: 54px; font-size: 12px; color: var(--muted); letter-spacing: .1em; text-transform: uppercase;
+    animation: bob 2.2s ease-in-out infinite; }
+  @keyframes bob { 0%,100% { transform: translateY(0); opacity: .55; } 50% { transform: translateY(6px); opacity: 1; } }
+
+  /* ---------- секции ---------- */
+  section { padding: 90px 0; border-top: 1px solid var(--border); }
+  .section-title { font-size: clamp(24px, 4.5vw, 32px); text-align: center; line-height: 1.28; margin-bottom: 16px; }
+  .section-lead { text-align: center; color: var(--muted); font-size: 16px; max-width: 480px; margin: 0 auto 46px; line-height: 1.6; }
+
+  /* как работает */
+  .steps { display: flex; flex-direction: column; gap: 14px; }
+  .step { display: flex; gap: 16px; align-items: flex-start; border: 1px solid var(--border); background: var(--panel);
+    border-radius: 16px; padding: 20px; }
+  .step .num { font-family: 'Playfair Display', serif; font-style: italic; font-weight: 700; font-size: 26px; color: var(--gold);
+    flex-shrink: 0; width: 34px; }
+  .step b { display: block; font-size: 16px; margin-bottom: 4px; }
+  .step p { margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.55; }
+
+  /* три пути */
+  .paths { display: flex; flex-direction: column; gap: 14px; }
+  .path-card { border: 1px solid var(--border); background: linear-gradient(180deg, var(--panel), var(--panel2));
+    border-radius: 18px; padding: 24px; }
+  .path-card .ptitle { font-family: 'Oswald', sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--gold2); font-size: 14px; margin-bottom: 8px; }
+  .path-card h3 { font-size: 21px; margin-bottom: 8px; }
+  .path-card .pdesc { color: var(--muted); font-size: 14.5px; line-height: 1.55; margin-bottom: 14px; }
+  .path-card .examples { font-size: 13px; color: var(--muted); border-top: 1px solid var(--border); padding-top: 12px; }
+  .path-card .examples b { color: var(--text); font-weight: 500; }
+
+  /* наставники */
+  .persona-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .persona-card { position: relative; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; aspect-ratio: 3/4; }
+  .persona-card img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(.9); }
+  .persona-card .shade { position: absolute; inset: 0; box-shadow: inset 0 -90px 60px -20px rgba(0,0,0,.92); }
+  .persona-card .pinfo { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px; }
+  .persona-card .pname { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 16px; text-shadow: 0 2px 6px rgba(0,0,0,.85); }
+  .persona-card .pline { font-size: 11.5px; color: #d8dae0; margin-top: 3px; text-shadow: 0 1px 4px rgba(0,0,0,.85); }
+
+  /* правда */
+  .truth { text-align: center; }
+  .truth blockquote { font-family: 'Playfair Display', serif; font-style: italic; font-size: clamp(20px, 4vw, 27px);
+    line-height: 1.5; margin: 0 0 20px; color: var(--text); }
+  .truth cite { display: block; font-style: normal; font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted); }
+
+  /* email */
+  .capture { text-align: center; }
+  #email-form { display: flex; flex-direction: column; gap: 10px; max-width: 360px; margin: 24px auto 0; }
+  #email-form input[type="email"] { padding: 14px 16px; border-radius: 12px; border: 1px solid var(--border);
+    background: var(--panel); color: var(--text); font-size: 15px; }
+  #email-note { font-size: 13px; margin-top: 12px; min-height: 18px; color: var(--muted); }
+
+  /* финальный CTA */
+  .final { text-align: center; }
+  .final h2 { font-size: clamp(26px, 5.5vw, 38px); line-height: 1.2; margin-bottom: 26px; }
+  .final .btn { max-width: 320px; margin: 0 auto; }
+
+  footer { padding: 40px 0 70px; text-align: center; font-size: 12.5px; color: var(--muted); }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+
+  <div id="sound-toggle" onclick="toggleSound()"><span class="dot"></span><span id="sound-label">Я против Я</span></div>
+  <audio id="bgm" src="i-protiv-i.mp3" loop preload="none"></audio>
+
+  <!-- ================= HERO ================= -->
+  <section class="hero" style="border-top:none">
+    <div class="eyebrow">Сила Слова</div>
+    <h1>Здесь живёт та версия тебя,<br>которую можешь увидеть <em>только ты</em></h1>
+    <div class="sub">Дал слово на камеру. Поставил на кон то, что дорого. Дошёл — герой.
+      Слился — узнают все. Здесь не ставят цели — здесь отвечают за слово.</div>
+    <div class="tagline">Сказал. Сделал.</div>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="https://t.me/YOUR_BOT_USERNAME?start=landing" target="_blank" rel="noopener">Дать слово в Telegram</a>
+      <a class="btn btn-secondary" href="#capture">Узнать о запуске первым</a>
+    </div>
+    <div class="scroll-hint">Только ты против тебя ↓</div>
+  </section>
+
+  <!-- ================= КАК ЭТО РАБОТАЕТ ================= -->
+  <section>
+    <div class="wrap">
+      <div class="eyebrow">Механика</div>
+      <h2 class="section-title">Четыре шага — и назад пути нет</h2>
+      <p class="section-lead">Люди не достигают целей не потому, что не знают как. А потому, что за слив ничего не будет. Мы это чиним.</p>
+      <div class="steps">
+        <div class="step"><span class="num">1</span><div><b>Записываешь клятву</b><p>«Я, [имя], даю слово, что…» — на камеру, вслух. Сказать — не то же самое, что напечатать. Себе на камеру не соврёшь.</p></div></div>
+        <div class="step"><span class="num">2</span><div><b>Ставишь на кон</b><p>Своё слово — как минимум. При желании — звёзды Telegram. На кону должно быть что-то, что реально жалко потерять.</p></div></div>
+        <div class="step"><span class="num">3</span><div><b>Идёшь с наставником</b><p>Персонаж — строгий или тёплый, выбираешь сам — держит тебя в курсе каждый день, пока ты держишь слово.</p></div></div>
+        <div class="step"><span class="num">4</span><div><b>Финиш — публично</b><p>Дошёл — статистика скажет, что ты в 1% тех, для кого слово имеет цену. Слился — тоже узнают. Без розовых соплей.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ТРИ ПУТИ ================= -->
+  <section>
+    <div class="wrap">
+      <div class="eyebrow">Три формата</div>
+      <h2 class="section-title">Выбери, за что отвечаешь</h2>
+      <p class="section-lead">Не абстрактная «цель». Конкретное обязательство с датой, привычка с жёсткими правилами или отказ, который проверит кто-то, кроме тебя.</p>
+      <div class="paths">
+        <div class="path-card">
+          <div class="ptitle">Результат</div>
+          <h3>Точка А → точка Б, к сроку</h3>
+          <div class="pdesc">Не «хочу», а «я сделаю к [дата]». Мотивация зафиксирована с самого начала — вспомнишь, если станет тяжело.</div>
+          <div class="examples"><b>Похудеть на 8 кг</b> · Накопить 300 000 ₽ · Пробежать 10 км · Выучить английский до B1</div>
+        </div>
+        <div class="path-card">
+          <div class="ptitle">Привычка</div>
+          <h3>Не отходить от курса — ни разу или почти</h3>
+          <div class="pdesc">Минимум 21 день. Выбираешь степень жёсткости — от «можно оступиться» до «Лучшая Версия Себя», где нет права на пропуск.</div>
+          <div class="examples"><b>100 отжиманий в день</b> · Читать 20 минут · Ложиться до 23:00 · Медитировать каждое утро</div>
+        </div>
+        <div class="path-card">
+          <div class="ptitle">Отказ</div>
+          <h3>Заявляешь намерение — свидетель проверяет</h3>
+          <div class="pdesc">Месяцы, не дни. Снаружи не видно, поэтому нужен тот, кто видит тебя каждый день и не соврёт за тебя в конце.</div>
+          <div class="examples"><b>Без алкоголя</b> · Без соцсетей после 22:00 · Без импульсивных покупок · Без сладкого</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= НАСТАВНИКИ ================= -->
+  <section>
+    <div class="wrap">
+      <div class="eyebrow">Сопровождение</div>
+      <h2 class="section-title">Тебя держит не приложение — тебя держит наставник</h2>
+      <p class="section-lead">Выбираешь, каким тоном с тобой говорят каждый день: мудростью, силой, любовью — или без цензуры.</p>
+      <div class="persona-grid">
+        <div class="persona-card"><img src="../confucius.jpg" alt="Конфуций" loading="lazy"><div class="shade"></div>
+          <div class="pinfo"><div class="pname">Конфуций</div><div class="pline">Мудрец. Спокоен, но не даст соврать себе.</div></div></div>
+        <div class="persona-card"><img src="../coach.jpg" alt="Физрук Арнольд" loading="lazy"><div class="shade"></div>
+          <div class="pinfo"><div class="pname">Физрук Арнольд</div><div class="pline">Прямой. За базар отвечают.</div></div></div>
+        <div class="persona-card"><img src="../angela_fox.jpg" alt="Анжела Фокс" loading="lazy"><div class="shade"></div>
+          <div class="pinfo"><div class="pname">Анжела Фокс</div><div class="pline">Любит по-настоящему — и поэтому не отстанет.</div></div></div>
+        <div class="persona-card"><img src="../baba_zina.jpg" alt="Баба Зина" loading="lazy"><div class="shade"></div>
+          <div class="pinfo"><div class="pname">Баба Зина 🔞</div><div class="pline">Без цензуры. Только для тех, кто осознанно выбрал.</div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ПРАВДА ================= -->
+  <section class="truth">
+    <div class="wrap">
+      <blockquote>«Ты не сорвался. Ты просто ещё ни разу не давал слово по-настоящему.»</blockquote>
+      <cite>Сила Слова</cite>
+    </div>
+  </section>
+
+  <!-- ================= EMAIL CAPTURE ================= -->
+  <section id="capture" class="capture">
+    <div class="wrap">
+      <div class="eyebrow">Не готов прямо сейчас</div>
+      <h2 class="section-title">Оставь почту — сообщим о публичном запуске</h2>
+      <p class="section-lead">Без спама. Одно письмо, когда откроется широкий доступ и появятся новые механики.</p>
+      <form id="email-form" onsubmit="return submitEmail(event)">
+        <input type="email" id="email-input" placeholder="твой@email.ru" required>
+        <button class="btn btn-primary" type="submit">Оставить почту</button>
+      </form>
+      <div id="email-note"></div>
+    </div>
+  </section>
+
+  <!-- ================= ФИНАЛ ================= -->
+  <section class="final">
+    <div class="wrap">
+      <div class="eyebrow">Решай сейчас</div>
+      <h2>Только ты <em style="font-family:'Playfair Display',serif;font-style:italic;color:var(--gold2)">против</em> тебя.<br>Слово либо стоит чего-то, либо нет.</h2>
+      <a class="btn btn-primary" href="https://t.me/YOUR_BOT_USERNAME?start=landing" target="_blank" rel="noopener">Дать слово в Telegram</a>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">Сила Слова · слово имеет цену<br><a href="https://t.me/YOUR_BOT_USERNAME" target="_blank" rel="noopener">@YOUR_BOT_USERNAME</a></div>
+  </footer>
+
+<script>
+  // ---------- тихий фоновый саундтрек «Я против Я» ----------
+  // Файл i-protiv-i.mp3 нужно положить рядом с этой страницей (в папку landing/) —
+  // сам по себе трек этим кодом не создаётся. Громкость намеренно низкая (фон, не хук).
+  // Автовоспроизведение со звуком браузеры блокируют без клика — поэтому это переключатель,
+  // а не автозапуск.
+  const bgm = document.getElementById("bgm");
+  const toggle = document.getElementById("sound-toggle");
+  const label = document.getElementById("sound-label");
+  bgm.volume = 0.14;
+  let playing = false;
+  function toggleSound() {
+    if (!playing) {
+      bgm.play().then(function () {
+        playing = true;
+        toggle.classList.add("playing");
+        label.textContent = "Я против Я — играет";
+      }).catch(function () {
+        label.textContent = "Трек скоро";
+      });
+    } else {
+      bgm.pause();
+      playing = false;
+      toggle.classList.remove("playing");
+      label.textContent = "Я против Я";
+    }
+  }
+  window.toggleSound = toggleSound;
+
+  // ---------- email capture ----------
+  // Без бэкенда на этой странице — форма шлёт на Formspree (бесплатно, 2 минуты настройки:
+  // создать форму на formspree.io и вставить свой endpoint вместо YOUR_FORM_ID ниже).
+  // До замены endpoint форма покажет мягкую ошибку и не потеряет данные молча.
+  function submitEmail(e) {
+    e.preventDefault();
+    const email = document.getElementById("email-input").value;
+    const note = document.getElementById("email-note");
+    note.style.color = "var(--muted)";
+    note.textContent = "Отправляю…";
+    fetch("https://formspree.io/f/YOUR_FORM_ID", {
+      method: "POST",
+      headers: { "Accept": "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email, source: "landing" }),
+    }).then(function (r) {
+      if (r.ok) {
+        note.style.color = "var(--gold2)";
+        note.textContent = "Готово — напишем, как только откроется доступ.";
+        document.getElementById("email-form").reset();
+      } else {
+        note.style.color = "#ff6b6b";
+        note.textContent = "Форма ещё не настроена — напиши нам в Telegram напрямую.";
+      }
+    }).catch(function () {
+      note.style.color = "#ff6b6b";
+      note.textContent = "Форма ещё не настроена — напиши нам в Telegram напрямую.";
+    });
+    return false;
+  }
+  window.submitEmail = submitEmail;
+</script>
+</body>
+</html>
