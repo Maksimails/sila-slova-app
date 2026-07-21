@@ -103,6 +103,12 @@
   .medal.locked { opacity: .7; }
   .hardest-card { display: flex; align-items: center; gap: 10px; }
   .hardest-card .hicon { font-size: 26px; }
+
+  /* ---------- мастер ставки v2 ---------- */
+  .info-box { border: 1px solid var(--border); background: var(--panel); border-radius: 12px; padding: 12px 14px; }
+  .chips-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chips-wrap .chip { flex: 0 0 auto; min-width: 46px; }
+  .chip.active-chip { border-color: var(--gold); background: rgba(232,176,75,.15); color: var(--gold2); }
 </style>
 </head>
 <body>
@@ -122,6 +128,20 @@
   // залиты в этот же репозиторий на GitHub Pages рядом с index.html
   const PERSONA_IMG = { confucius: "confucius.jpg", arnold: "coach.jpg", zina: "baba_zina.jpg", angela: "angela_fox.jpg" };
   const PERSONA_FONT = { confucius: "name-confucius", arnold: "name-arnold", zina: "name-zina", angela: "name-angela" };
+
+  // ---------- Мастер ставки v2 (см. Мастер_ставки_v2_PRD.md) ----------
+  const EXAMPLES = {
+    result: ["Похудеть на 8 кг", "Накопить 300 000 ₽", "Закрыть кредит", "Пробежать 10 км", "Выучить английский до B1", "Прочитать 12 книг", "Завершить обучение", "Запустить свой проект", "Получить водительские права", "Сделать ремонт", "Найти новую работу", "Набрать 5 кг"],
+    habit: ["100 отжиманий в день", "Тренироваться 3 раза в неделю", "Проходить 10 000 шагов", "Читать 20 минут в день", "Учить английский 30 минут", "Медитировать каждое утро", "Ложиться до 23:00", "Выпивать 2 литра воды", "Делать 10 звонков клиентам", "Вести учёт расходов", "Писать по одной странице", "Делать зарядку по утрам"],
+    quit: ["Без алкоголя", "Без сигарет", "Без сладкого", "Без фастфуда", "Без энергетиков", "Без ставок и казино", "Без импульсивных покупок", "Без соцсетей после 22:00", "Без телефона первый час после пробуждения", "Без компьютерных игр по будням", "Без еды после 20:00", "Без нецензурной речи"],
+  };
+  const HABIT_TIER_LABELS = { light: "Лайт", normie: "Нормис", best_self: "Лучшая Версия Себя" };
+  const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]; // индекс совпадает с WEEKDAYS_RU в бот/index.ts
+  function formatRuDate(iso) {
+    if (!iso) return "";
+    const parts = iso.split("-");
+    return parts[2] + "." + parts[1] + "." + parts[0];
+  }
 
   let ctx = { user: null, bets: [], pending: [], draft: {}, step: 0 };
 
@@ -340,13 +360,30 @@
   // ---------- мастер ставки ----------
   const MAX_VIDEO_BYTES = 20 * 1024 * 1024;
   window.startWizard = function () {
-    ctx.draft = { mode: null, type: null, goal: "", point_a: "", point_b: "", days: null, _date: "", witness: "", videoFile: null, videoPreviewUrl: null, stake: 0 };
+    ctx.draft = {
+      mode: null, type: null, goal: "", point_a: "", motivation: "",
+      days: null, _date: "",
+      habit_tier: null, skip_mode: null, allowed_skip_weekdays: [],
+      witness_phone: "", witness_tg: "", witness_checkin_time: "19:00",
+      videoFile: null, videoPreviewUrl: null, stake: 0, _exOffset: 0,
+    };
     ctx.step = 0;
     renderWizard();
   };
   function stepList() {
-    const s = ["mode", "type", "goal", "pointA", "pointB", "duration"];
-    if (ctx.draft.type === "quit") s.push("witness");
+    const t = ctx.draft.type;
+    const s = ["mode", "type", "goal"];
+    if (t === "result") {
+      s.push("pointA", "motivation", "duration");
+    } else if (t === "habit") {
+      s.push("duration", "habitTier");
+      if (ctx.draft.habit_tier === "light" || ctx.draft.habit_tier === "normie") {
+        s.push("skipMode");
+        if (ctx.draft.skip_mode === "predeclared") s.push("skipDays");
+      }
+    } else if (t === "quit") {
+      s.push("duration", "witness");
+    }
     s.push("video", "stake", "review");
     return s;
   }
@@ -367,39 +404,95 @@
     } else if (name === "type") {
       showNext = false;
       body = "<h2>На что даёшь слово?</h2>" +
-        '<div class="opt" onclick="pick(\'type\',\'result\')"><b>Результат</b><div class="muted">Конкретная точка: минус 8 кг, накопить 300 000 ₽</div></div>' +
-        '<div class="opt" onclick="pick(\'type\',\'habit\')"><b>Привычка</b><div class="muted">Делать регулярно: 100 отжиманий в день</div></div>' +
-        '<div class="opt" onclick="pick(\'type\',\'quit\')"><b>Отказ</b><div class="muted">Прекратить: без алкоголя, без сладкого</div></div>';
+        '<div class="opt" onclick="pick(\'type\',\'result\')"><b>Результат</b><div class="muted">Достичь цели к сроку</div>' +
+        '<div class="muted" style="font-size:12.5px;margin-top:4px">' + esc(EXAMPLES.result.slice(0, 4).join(" · ")) + '</div></div>' +
+        '<div class="opt" onclick="pick(\'type\',\'habit\')"><b>Привычка</b><div class="muted">Регулярно выполнять действие</div>' +
+        '<div class="muted" style="font-size:12.5px;margin-top:4px">' + esc(EXAMPLES.habit.slice(0, 4).join(" · ")) + '</div></div>' +
+        '<div class="opt" onclick="pick(\'type\',\'quit\')"><b>Отказ</b><div class="muted">Отказаться от чего-то на срок</div>' +
+        '<div class="muted" style="font-size:12.5px;margin-top:4px">' + esc(EXAMPLES.quit.slice(0, 4).join(" · ")) + '</div></div>';
     } else if (name === "goal") {
+      const t = d.type;
+      const ex = EXAMPLES[t] || [];
+      const off = d._exOffset || 0;
+      const shown = ex.length ? ex.slice(off, off + 4).concat(ex.slice(0, Math.max(0, off + 4 - ex.length))) : [];
+      let hint, placeholder;
+      if (t === "result") {
+        hint = "Сформулируй как обязательство, не желание. Шаблон: «Я сделаю / Я буду … к [дата]».";
+        placeholder = "Я похудею до 85 кг к 1 октября";
+      } else if (t === "habit") {
+        hint = "Что делаешь регулярно?";
+        placeholder = "100 отжиманий в день";
+      } else {
+        hint = "От чего отказываешься?";
+        placeholder = "Без алкоголя";
+      }
       body = "<h2>Цель</h2>" +
-        '<div class="muted" style="margin-bottom:10px">Одной фразой с цифрой и сроком. Шаблон: «Хочу … к …».</div>' +
-        '<textarea id="f-goal" placeholder="Хочу весить 85 кг к 1 октября">' + esc(d.goal) + "</textarea>" +
+        '<div class="muted" style="margin-bottom:10px">' + hint + "</div>" +
+        '<textarea id="f-goal" placeholder="' + escAttr(placeholder) + '">' + esc(d.goal) + "</textarea>" +
+        (shown.length ? '<div class="muted" style="font-size:12.5px;margin-top:8px">Примеры: ' + esc(shown.join(" · ")) + "</div>" +
+          '<div class="btn-secondary" style="text-align:center;padding:8px;border-radius:10px;margin-top:8px;cursor:pointer;font-size:13px" onclick="moreExamples()">Ещё примеры</div>' : "") +
         '<div id="f-err" class="err"></div>';
     } else if (name === "pointA") {
       body = "<h2>Точка А</h2>" +
         '<div class="muted" style="margin-bottom:10px">Где ты сейчас? Число или короткое описание — просто текстом.</div>' +
         '<input id="f-a" type="text" placeholder="Например: 93 кг" value="' + escAttr(d.point_a) + '">' +
         '<div id="f-err" class="err"></div>';
-    } else if (name === "pointB") {
-      body = "<h2>Точка Б</h2>" +
-        '<div class="muted" style="margin-bottom:10px">Куда идём? Финиш цифрой.</div>' +
-        '<input id="f-b" type="text" placeholder="Например: 85 кг" value="' + escAttr(d.point_b) + '">' +
+    } else if (name === "motivation") {
+      body = "<h2>Для чего ты это делаешь?</h2>" +
+        '<div class="muted" style="margin-bottom:10px">Одно-два предложения — то, что вспомнишь на финише, если станет тяжело.</div>' +
+        '<textarea id="f-mot" placeholder="Например: чтобы чувствовать себя увереннее">' + esc(d.motivation) + "</textarea>" +
         '<div id="f-err" class="err"></div>';
     } else if (name === "duration") {
       const min = new Date(Date.now() + 3 * 3600e3 + 864e5).toISOString().slice(0, 10);
-      body = "<h2>Срок</h2>" +
-        '<div class="chips">' +
-        '<div class="chip" onclick="pickDays(7)">7 дней</div>' +
-        '<div class="chip" onclick="pickDays(14)">14 дней</div>' +
-        '<div class="chip" onclick="pickDays(30)">30 дней</div></div>' +
+      let chips = "";
+      if (d.type === "habit") {
+        chips = '<div class="chips"><div class="chip" onclick="pickDays(21)">21 день</div><div class="chip" onclick="pickDays(40)">40 дней</div></div>' +
+          '<div class="chips" style="margin-top:8px"><div class="chip" onclick="pickDays(100)">100 дней</div><div class="chip" onclick="pickDays(365)">365 дней</div></div>';
+      } else if (d.type === "quit") {
+        chips = '<div class="chips"><div class="chip" onclick="pickDays(30)">30 дней</div><div class="chip" onclick="pickDays(90)">90 дней</div></div>' +
+          '<div class="chips" style="margin-top:8px"><div class="chip" onclick="pickDays(180)">180 дней</div><div class="chip" onclick="pickDays(365)">Год</div></div>';
+      } else {
+        chips = '<div class="chips"><div class="chip" onclick="pickDays(7)">Неделя</div><div class="chip" onclick="pickDays(14)">2 недели</div><div class="chip" onclick="pickDays(30)">Месяц</div></div>';
+      }
+      const minNote = d.type === "habit" ? "Минимум 21 день — так формируется привычка." : d.type === "quit" ? "Это процесс минимум на месяцы. Минимум 30 дней." : "";
+      body = "<h2>" + (d.type === "result" ? "Дата финиша" : "Срок") + "</h2>" +
+        (minNote ? '<div class="muted" style="margin-bottom:10px">' + minNote + "</div>" : "") +
+        chips +
         '<div class="muted" style="margin:12px 0 6px">Или выбери дату:</div>' +
         '<input id="f-date" type="date" min="' + min + '" value="' + d._date + '" onchange="pickDate(this.value)">' +
-        (d.days ? '<div class="muted" style="margin-top:8px">' + d.days + " дн." + "</div>" : "") +
+        (d.days ? '<div class="muted" style="margin-top:8px">Финиш: ' + formatRuDate(d._date) + " · " + d.days + " дн.</div>" : "") +
+        '<div id="f-err" class="err"></div>';
+    } else if (name === "habitTier") {
+      showNext = false;
+      body = "<h2>Насколько жёстко идём?</h2>" +
+        '<div class="opt" onclick="pickHabitTier(\'light\')"><b>Лайт</b><div class="muted">Можно пропустить 1-2 дня в неделю.</div></div>' +
+        '<div class="opt" onclick="pickHabitTier(\'normie\')"><b>Нормис</b><div class="muted">Можно пропустить 1 день в месяц.</div></div>' +
+        '<div class="opt" onclick="pickHabitTier(\'best_self\')"><b>Лучшая Версия Себя</b><div class="muted">Ни одного пропуска за весь срок.</div></div>';
+    } else if (name === "skipMode") {
+      showNext = false;
+      body = "<h2>Как считать пропуски?</h2>" +
+        '<div class="opt" onclick="pickSkipMode(\'predeclared\')"><b>Заранее</b><div class="muted">Выбираешь конкретный день недели, когда пропуск разрешён.</div></div>' +
+        '<div class="opt" onclick="pickSkipMode(\'flexible\')"><b>По ситуации</b><div class="muted">Пропуск спишется автоматически, когда случится.</div></div>';
+    } else if (name === "skipDays") {
+      const chips = WEEKDAYS.map(function (label, i) {
+        const active = (d.allowed_skip_weekdays || []).indexOf(i) !== -1 ? " active-chip" : "";
+        return '<div class="chip' + active + '" onclick="toggleSkipDay(' + i + ')">' + label + "</div>";
+      }).join("");
+      body = "<h2>Какой день можно пропускать?</h2>" +
+        '<div class="muted" style="margin-bottom:10px">Выбери один или два дня недели.</div>' +
+        '<div class="chips-wrap">' + chips + "</div>" +
         '<div id="f-err" class="err"></div>';
     } else if (name === "witness") {
+      const timeChips = ["09:00", "12:00", "19:00", "22:00"].map(function (t) {
+        const active = d.witness_checkin_time === t ? " active-chip" : "";
+        return '<div class="chip' + active + '" onclick="pickCheckinTime(\'' + t + '\')">' + t + "</div>";
+      }).join("");
       body = "<h2>Свидетель</h2>" +
-        '<div class="muted" style="margin-bottom:10px">Отказ снаружи не виден. Нужен тот, кто видит тебя каждый день и подтвердит в конце: «Держал(а) слово?»</div>' +
-        '<input id="f-w" type="text" placeholder="@username" value="' + escAttr(d.witness) + '">' +
+        '<div class="muted" style="margin-bottom:10px">Отказ снаружи не виден — нужен проверяющий. Пришли его номер телефона и Telegram.</div>' +
+        '<input id="f-wphone" type="text" placeholder="Номер телефона" value="' + escAttr(d.witness_phone) + '" style="margin-bottom:10px">' +
+        '<input id="f-wtg" type="text" placeholder="@username или имя" value="' + escAttr(d.witness_tg) + '">' +
+        '<div class="muted" style="margin:14px 0 6px">Во сколько бот будет проверять (минимум раз в неделю)?</div>' +
+        '<div class="chips">' + timeChips + "</div>" +
         '<div id="f-err" class="err"></div>';
     } else if (name === "video") {
       showNext = !!d.videoFile;
@@ -428,7 +521,7 @@
       }
     } else if (name === "stake") {
       body = "<h2>Ставка</h2>" +
-        '<div class="muted" style="margin-bottom:10px">Сумма в Stars — сейчас тестовый режим. Символические 1–10 ⭐ дают почувствовать, что на кону не только слово.</div>' +
+        '<div class="muted" style="margin-bottom:10px">Сумма в Stars — символическая ставка усиливает решимость.</div>' +
         '<div class="chips">' +
         '<div class="chip" onclick="pickStake(0)">Без ставки</div>' +
         '<div class="chip" onclick="pickStake(1)">1 ⭐</div>' +
@@ -436,20 +529,32 @@
         '<div class="chip" onclick="pickStake(10)">10 ⭐</div></div>' +
         '<div class="muted" style="margin:12px 0 6px">Или своя сумма:</div>' +
         '<input id="f-stake" type="text" inputmode="numeric" placeholder="Например: 25" value="' + (d.stake || "") + '" oninput="onStakeInput(this.value)">' +
-        '<div id="stake-note" class="muted" style="margin-top:8px">' + (d.stake ? d.stake + " ⭐ будет списано при подтверждении." : "Пока без ставки — только слово.") + "</div>";
+        '<div id="stake-note" class="muted" style="margin-top:8px">' + (d.stake ? d.stake + " ⭐ будет списано при подтверждении." : "Пока без ставки — только слово.") + "</div>" +
+        '<div class="info-box" style="margin-top:14px"><b style="display:block;margin-bottom:4px">Нет звёзд, а платёж из России?</b>' +
+        '<div class="muted" style="font-size:13px;margin-bottom:8px">Купить Stars можно через Telegram-бота @Starsly_bot — самый простой вариант, прямо в чате.</div>' +
+        '<a href="https://t.me/Starsly_bot" target="_blank" style="display:block;text-align:center;padding:10px;border-radius:10px;border:1px solid var(--border);color:var(--gold2);text-decoration:none;font-size:14px">Открыть @Starsly_bot</a>' +
+        '<div class="muted" style="font-size:11.5px;margin-top:8px">Это сторонний сервис, не связанный с Сила Слова. Мы не можем гарантировать его работу — прежде чем платить, проверь отзывы сам.</div></div>';
     } else if (name === "review") {
+      const rows = [];
+      rows.push('<div class="row"><span>Режим</span><span>' + (d.mode === "public" ? "Публично" : "Лично") + "</span></div>");
+      rows.push('<div class="row"><span>Тип</span><span>' + TYPES[d.type] + "</span></div>");
+      rows.push('<div class="row"><span>Цель</span><span>' + esc(d.goal) + "</span></div>");
+      if (d.type === "result") {
+        rows.push('<div class="row"><span>Точка А</span><span>' + esc(d.point_a) + "</span></div>");
+        rows.push('<div class="row"><span>Ради чего</span><span>' + esc(d.motivation) + "</span></div>");
+        rows.push('<div class="row"><span>Финиш</span><span>' + formatRuDate(d._date) + "</span></div>");
+      } else if (d.type === "habit") {
+        rows.push('<div class="row"><span>Срок</span><span>' + formatRuDate(d._date) + " · " + d.days + " дн.</span></div>");
+        rows.push('<div class="row"><span>Уровень</span><span>' + (HABIT_TIER_LABELS[d.habit_tier] || "") + "</span></div>");
+      } else if (d.type === "quit") {
+        rows.push('<div class="row"><span>Срок</span><span>' + formatRuDate(d._date) + " · " + d.days + " дн.</span></div>");
+        rows.push('<div class="row"><span>Свидетель</span><span>' + esc(d.witness_tg) + "</span></div>");
+        rows.push('<div class="row"><span>Проверка</span><span>' + d.witness_checkin_time + "</span></div>");
+      }
+      rows.push('<div class="row"><span>Видео</span><span>' + (d.videoFile ? "прикреплено ✓" : "нет") + "</span></div>");
+      rows.push('<div class="row"><span>Ставка</span><span>' + (d.stake ? d.stake + " ⭐" : "без ставки") + "</span></div>");
       body = "<h2>Проверь и вперёд</h2>" +
-        '<div class="card">' +
-        '<div class="row"><span>Режим</span><span>' + (d.mode === "public" ? "Публично" : "Лично") + "</span></div>" +
-        '<div class="row"><span>Тип</span><span>' + TYPES[d.type] + "</span></div>" +
-        '<div class="row"><span>Цель</span><span>' + esc(d.goal) + "</span></div>" +
-        '<div class="row"><span>Точка А</span><span>' + esc(d.point_a) + "</span></div>" +
-        '<div class="row"><span>Точка Б</span><span>' + esc(d.point_b) + "</span></div>" +
-        '<div class="row"><span>Срок</span><span>' + d.days + " дн.</span></div>" +
-        (d.type === "quit" ? '<div class="row"><span>Свидетель</span><span>' + esc(d.witness) + "</span></div>" : "") +
-        '<div class="row"><span>Видео</span><span>' + (d.videoFile ? "прикреплено ✓" : "нет") + "</span></div>" +
-        '<div class="row"><span>Ставка</span><span>' + (d.stake ? d.stake + " ⭐" : "без ставки") + "</span></div>" +
-        "</div>" +
+        '<div class="card">' + rows.join("") + "</div>" +
         '<div class="muted" style="text-align:center;margin-bottom:16px">' +
         (d.stake ? "Подтверждаешь — сразу откроется оплата " + d.stake + " ⭐. Карточка публикуется сразу после оплаты, не выходя из приложения." : "Подтверждаешь — публикуем сразу, не выходя из приложения.") +
         "</div>";
@@ -485,6 +590,33 @@
     const to = new Date(v + "T00:00:00Z");
     const days = Math.round((to - from) / 864e5);
     ctx.draft.days = days; ctx.draft._date = v;
+    renderWizard();
+  };
+  window.moreExamples = function () {
+    const t = ctx.draft.type;
+    const len = (EXAMPLES[t] || []).length;
+    if (!len) return;
+    ctx.draft._exOffset = ((ctx.draft._exOffset || 0) + 4) % len;
+    renderWizard();
+  };
+  window.pickHabitTier = function (v) {
+    ctx.draft.habit_tier = v;
+    if (v === "best_self") { ctx.draft.skip_mode = null; ctx.draft.allowed_skip_weekdays = []; }
+    wizNext();
+  };
+  window.pickSkipMode = function (v) {
+    ctx.draft.skip_mode = v;
+    wizNext();
+  };
+  window.toggleSkipDay = function (i) {
+    const arr = (ctx.draft.allowed_skip_weekdays || []).slice();
+    const idx = arr.indexOf(i);
+    if (idx === -1) arr.push(i); else arr.splice(idx, 1);
+    ctx.draft.allowed_skip_weekdays = arr;
+    renderWizard();
+  };
+  window.pickCheckinTime = function (v) {
+    ctx.draft.witness_checkin_time = v;
     renderWizard();
   };
 
@@ -620,18 +752,25 @@
       if (!v) return err("Опиши, где ты сейчас.");
       d.point_a = v;
     }
-    if (name === "pointB") {
-      const v = document.getElementById("f-b").value.trim();
-      if (!v) return err("Напиши финиш.");
-      d.point_b = v;
+    if (name === "motivation") {
+      const v = document.getElementById("f-mot").value.trim();
+      if (!v) return err("Напиши коротко — для чего.");
+      d.motivation = v;
     }
     if (name === "duration") {
-      if (!d.days || d.days < 1 || d.days > 365) return err("Выбери срок от 1 до 365 дней.");
+      if (!d.days || d.days < 1 || d.days > 365) return err("Выбери срок.");
+      if (d.type === "habit" && d.days < 21) return err("Для привычки нужно минимум 21 день.");
+      if (d.type === "quit" && d.days < 30) return err("Для отказа нужен срок минимум 30 дней.");
+    }
+    if (name === "skipDays") {
+      if (!d.allowed_skip_weekdays || !d.allowed_skip_weekdays.length) return err("Выбери хотя бы один день.");
     }
     if (name === "witness") {
-      const v = document.getElementById("f-w").value.trim();
-      if (!v.startsWith("@")) return err("Начни с @, например @ivanov.");
-      d.witness = v;
+      const phone = document.getElementById("f-wphone").value.trim();
+      const wtg = document.getElementById("f-wtg").value.trim();
+      if (!phone) return err("Пришли номер телефона свидетеля.");
+      if (!wtg) return err("Напиши Telegram свидетеля.");
+      d.witness_phone = phone; d.witness_tg = wtg;
     }
     if (name === "video") {
       if (!d.videoFile) return err("Прикрепи видео — без него слово не считается.");
@@ -647,10 +786,22 @@
     try {
       const d = ctx.draft;
       const fd = new FormData();
-      fd.append("draft", JSON.stringify({
-        mode: d.mode, type: d.type, goal: d.goal, point_a: d.point_a, point_b: d.point_b,
-        days: d.days, witness: d.witness || null, stake: d.stake || 0,
-      }));
+      const draftPayload = { mode: d.mode, type: d.type, goal: d.goal, days: d.days, stake: d.stake || 0 };
+      if (d.type === "result") {
+        draftPayload.point_a = d.point_a;
+        draftPayload.motivation = d.motivation;
+      }
+      if (d.type === "habit") {
+        draftPayload.habit_tier = d.habit_tier;
+        draftPayload.skip_mode = d.skip_mode;
+        draftPayload.allowed_skip_weekdays = d.allowed_skip_weekdays || [];
+      }
+      if (d.type === "quit") {
+        draftPayload.witness_phone = d.witness_phone;
+        draftPayload.witness_tg = d.witness_tg;
+        draftPayload.witness_checkin_time = d.witness_checkin_time;
+      }
+      fd.append("draft", JSON.stringify(draftPayload));
       fd.append("video", d.videoFile, d.videoFile.name || "video.mp4");
       const r = await api("/create", { method: "POST", body: fd });
       const data = await r.json();
@@ -659,6 +810,7 @@
           '<button onclick="renderWizard()">Назад к форме</button>';
         return;
       }
+      ctx.lastWitnessInvite = data.witness_invite || null;
       if (data.pending) { openStakeInvoice(data.invoice_link, data.bet_id); }
       else { await refreshStatus(); finishWizard(data.bet_id, true, null); }
     } catch (e) {
@@ -706,11 +858,17 @@
     const note = status === "processing"
       ? '<div class="muted" style="text-align:center;margin-bottom:12px">⭐ Оплата подтверждается — карточка появится в группе в течение минуты.</div>'
       : '<div class="muted" style="text-align:center;margin-bottom:12px">⭐ Ставка оплачена.</div>';
+    const wi = ctx.lastWitnessInvite;
+    const witnessBlock = wi
+      ? '<div class="card" style="text-align:center"><div class="muted" style="margin-bottom:8px">Перешли эту ссылку или QR своему свидетелю:</div>' +
+        '<img src="' + escAttr(wi.qr) + '" alt="QR" style="width:160px;height:160px;border-radius:12px;margin-bottom:8px">' +
+        '<div style="word-break:break-all;font-size:13px;color:var(--gold2)">' + esc(wi.link) + "</div></div>"
+      : "";
     app.innerHTML =
       '<div class="card" style="text-align:center"><div style="font-size:40px;margin-bottom:8px">🎬</div>' +
       '<div style="font-size:17px;margin-bottom:6px">Слово дано</div>' +
       '<div class="muted">Карточка #' + betId + " создана" + (ctx.draft.mode === "public" ? " и опубликована в группе." : ".") + "</div></div>" +
-      note +
+      note + witnessBlock +
       '<button onclick="goToPersonaAfterCreate(' + betId + ')">Выбрать персонажа</button>' +
       '<button class="btn-secondary" onclick="reloadAndHome()">К списку ставок</button>';
   }
