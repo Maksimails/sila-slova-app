@@ -95,6 +95,17 @@
   .persona-card .pname { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 16px; text-shadow: 0 2px 6px rgba(0,0,0,.85); }
   .persona-card .pline { font-size: 11.5px; color: #d8dae0; margin-top: 3px; text-shadow: 0 1px 4px rgba(0,0,0,.85); }
 
+  /* FAQ */
+  .faq { display: flex; flex-direction: column; gap: 10px; }
+  .faq-item { border: 1px solid var(--border); background: var(--panel); border-radius: 14px; padding: 4px 20px; }
+  .faq-item summary { cursor: pointer; list-style: none; padding: 16px 26px 16px 0; font-size: 15.5px; font-weight: 600;
+    color: var(--text); position: relative; }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-item summary::after { content: "+"; position: absolute; right: 0; top: 14px; font-family: 'Playfair Display', serif;
+    font-size: 20px; color: var(--gold); transition: transform .2s; }
+  .faq-item[open] summary::after { content: "–"; }
+  .faq-item p { margin: 0 0 18px; color: var(--muted); font-size: 14.5px; line-height: 1.6; }
+
   /* правда */
   .truth { text-align: center; }
   .truth blockquote { font-family: 'Playfair Display', serif; font-style: italic; font-size: clamp(20px, 4vw, 27px);
@@ -131,10 +142,50 @@
       Слился — узнают все. Здесь не ставят цели — здесь отвечают за слово.</div>
     <div class="tagline">Сказал. Сделал.</div>
     <div class="cta-row">
-      <a class="btn btn-primary" href="https://t.me/YOUR_BOT_USERNAME?start=landing" target="_blank" rel="noopener">Дать слово в Telegram</a>
+      <a class="btn btn-primary" href="https://t.me/Tvoya_Sila_Slova_Bot?start=landing" target="_blank" rel="noopener">Дать слово в Telegram</a>
       <a class="btn btn-secondary" href="#capture">Узнать о запуске первым</a>
     </div>
     <div class="scroll-hint">Только ты против тебя ↓</div>
+  </section>
+
+  <!-- ================= КОРОТКО: ЧТО ЭТО ================= -->
+  <section>
+    <div class="wrap">
+      <div class="eyebrow">Если коротко</div>
+      <h2 class="section-title">Не приложение для целей. Инструмент для ответственности</h2>
+      <p class="section-lead">Ты не «отмечаешь прогресс» — ты даёшь слово вслух, на камеру, и каждый день доказываешь, что оно чего-то стоит. Это три отличия от привычных трекеров:</p>
+      <div class="steps">
+        <div class="step"><span class="num">✓</span><div><b>Слово — не галочка</b><p>Клятва записывается на видео и живёт как факт, а не как строчка в списке дел, которую легко удалить.</p></div></div>
+        <div class="step"><span class="num">✓</span><div><b>Есть настоящая цена срыва</b><p>Кто-то узнает, что ты не сдержал слово: бот, свидетель или — если выбрал публичный режим — все в группе.</p></div></div>
+        <div class="step"><span class="num">✓</span><div><b>Рядом — наставник, а не пуш-уведомление</b><p>Персонаж с характером говорит с тобой каждый день по-настоящему, а не шлёт дежурное «не забудь позаниматься».</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ПОЧЕМУ ЭТО РАБОТАЕТ ================= -->
+  <section>
+    <div class="wrap">
+      <div class="eyebrow">Почему это работает</div>
+      <h2 class="section-title">Три принципа, а не мотивационные картинки</h2>
+      <p class="section-lead">Ничего эзотерического — три механизма, на которых давно строятся «commitment device»-инструменты вроде stickK, только у нас в основе не деньги, а слово и репутация.</p>
+      <div class="paths">
+        <div class="path-card">
+          <div class="ptitle">01</div>
+          <h3>Сказанное вслух держит крепче, чем подуманное</h3>
+          <div class="pdesc">Записать клятву на камеру — не то же самое, что напечатать цель в заметках. Ты слышишь свой голос — и это меняет отношение к обещанию.</div>
+        </div>
+        <div class="path-card">
+          <div class="ptitle">02</div>
+          <h3>Терять больнее, чем не получать</h3>
+          <div class="pdesc">Когда на кону реальная ставка — слово, репутация, позже и деньги — мозг реагирует иначе, чем на абстрактную «цель на этот год».</div>
+        </div>
+        <div class="path-card">
+          <div class="ptitle">03</div>
+          <h3>Свидетель меняет всё</h3>
+          <div class="pdesc">Когда кто-то — бот, свидетель, вся группа — реально узнает о результате, шанс довести дело до конца заметно выше, чем «наедине с собой».</div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- ================= КАК ЭТО РАБОТАЕТ ================= -->
@@ -177,6 +228,41 @@
           <div class="pdesc">Месяцы, не дни. Снаружи не видно, поэтому нужен тот, кто видит тебя каждый день и не соврёт за тебя в конце.</div>
           <div class="examples"><b>Без алкоголя</b> · Без соцсетей после 22:00 · Без импульсивных покупок · Без сладкого</div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ЧАСТЫЕ ВОПРОСЫ ================= -->
+  <section>
+    <div class="wrap">
+      <div class="eyebrow">Прежде чем начать</div>
+      <h2 class="section-title">Вопросы, которые обычно возникают первыми</h2>
+      <p class="section-lead">Коротко и без воды — остальное можно спросить в Поддержке прямо в боте.</p>
+      <div class="faq">
+        <details class="faq-item">
+          <summary>Это бесплатно?</summary>
+          <p>Да. Сейчас — первая волна, без денег: ставишь слово, а не деньги. Ставки звёздами Telegram появятся позже, и это будет твой выбор, а не обязаловка.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Что если случится настоящий форс-мажор?</summary>
+          <p>Пишешь в Поддержку в течение 24 часов после срыва — разбираем по-человечески, живыми людьми, а не автоматическим отказом.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Это марафон или курс с продажами?</summary>
+          <p>Нет. Ни диплома, ни курса, ни воронки допродаж. Один инструмент: ты дал слово — бот и, по желанию, люди вокруг следят, сдержал ты его или нет.</p>
+        </details>
+        <details class="faq-item">
+          <summary>В публичном режиме точно кто-то увидит?</summary>
+          <p>Да, пост уходит в открытую группу Telegram, и отчёты видны всем. Именно это поднимает выполняемость — привычное «пообещал себе и забыл» здесь не проходит. Не готов — есть личный режим, где всё видишь только ты и бот.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Как проверяется «Отказ», если снаружи не видно?</summary>
+          <p>Через свидетеля — человека, которому доверяешь. Раз в неделю бот спрашивает у него, всё ли в порядке, а в конце срока свидетель выносит финальный вердикт.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Кто видит мои данные?</summary>
+          <p>В личном режиме — только ты и бот. В публичном — то, что ты сам публикуешь: клятва и ежедневные отчёты, и ничего больше.</p>
+        </details>
       </div>
     </div>
   </section>
@@ -227,12 +313,12 @@
     <div class="wrap">
       <div class="eyebrow">Решай сейчас</div>
       <h2>Только ты <em style="font-family:'Playfair Display',serif;font-style:italic;color:var(--gold2)">против</em> тебя.<br>Слово либо стоит чего-то, либо нет.</h2>
-      <a class="btn btn-primary" href="https://t.me/YOUR_BOT_USERNAME?start=landing" target="_blank" rel="noopener">Дать слово в Telegram</a>
+      <a class="btn btn-primary" href="https://t.me/Tvoya_Sila_Slova_Bot?start=landing" target="_blank" rel="noopener">Дать слово в Telegram</a>
     </div>
   </section>
 
   <footer>
-    <div class="wrap">Сила Слова · слово имеет цену<br><a href="https://t.me/YOUR_BOT_USERNAME" target="_blank" rel="noopener">@YOUR_BOT_USERNAME</a></div>
+    <div class="wrap">Сила Слова · слово имеет цену<br><a href="https://t.me/Tvoya_Sila_Slova_Bot" target="_blank" rel="noopener">@Tvoya_Sila_Slova_Bot</a></div>
   </footer>
 
 <script>
