@@ -165,6 +165,16 @@
       const data = await r.json();
       if (r.ok) { ctx.user = data.user; ctx.bets = data.bets || []; ctx.pending = data.pending || []; }
     } catch (e) { /* молча — следующий рендер попробует снова */ }
+    await refreshChallenges();
+  }
+
+  // ---------- Вызов (Challenge) — Фаза 1: 1:1. См. Вызов_фича_спека_v1.md ----------
+  async function refreshChallenges() {
+    try {
+      const r = await api("/challenges-mine");
+      const data = await r.json();
+      if (r.ok) ctx.challenges = data.challenges || [];
+    } catch (e) { /* молча */ }
   }
 
   async function boot() {
@@ -175,6 +185,10 @@
       const data = await r.json();
       if (!r.ok) { app.innerHTML = emptyMsg("Не удалось проверить — открой заново через бота."); return; }
       ctx.user = data.user; ctx.bets = data.bets || []; ctx.pending = data.pending || [];
+      await refreshChallenges();
+      const params = new URLSearchParams(location.search);
+      const chToken = params.get("challenge");
+      if (chToken) { renderChallengeInvite(chToken); return; }
       renderHome();
     } catch (e) {
       app.innerHTML = emptyMsg("Ошибка соединения. Попробуй ещё раз.");
@@ -232,9 +246,31 @@
       html += '<div class="empty"><div style="font-size:17px;margin-bottom:4px">Активных ставок нет.</div>' +
         '<div class="muted">Готов проверить себя?</div></div>';
     }
+    const challenges = ctx.challenges || [];
+    if (challenges.length) {
+      html += '<div class="muted" style="margin:20px 0 10px">⚔ Мои вызовы (' + challenges.length + '):</div>';
+      html += challenges.map(function (c) {
+        const oppLine = c.opponent
+          ? 'Соперник: ' + esc(c.opponent.name) + (c.status === 'active' ? (c.opponent.reported_today ? ' · отчитался(-ась) сегодня ✓' : ' · ещё не отчитался(-ась) сегодня') : '')
+          : 'Ждём соперника';
+        return '<div class="bet-card" onclick="openChallengeDetail(' + c.id + ')">' +
+          '<div class="top"><div class="goal">' + esc(c.goal) + '</div><div class="badge">⚔ #' + c.id + '</div></div>' +
+          '<div class="meta">' + (TYPES[c.type] || c.type) + ' · ' + challengeStatusLabel(c) + '</div>' +
+          '<div class="meta">' + oppLine + '</div></div>';
+      }).join("");
+    }
     html += '<button onclick="startWizard()">🚀 Дать слово</button>' + footerNav();
     app.innerHTML = html;
   };
+
+  function challengeStatusLabel(c) {
+    if (c.status === "proposed") return c.my_role === "creator" ? "ждём принятия соперником" : "ждёт решения";
+    if (c.status === "active") return "День " + c.day_n + " из " + c.duration_days;
+    if (c.status === "completed") return "завершён";
+    if (c.status === "declined") return "отклонён";
+    if (c.status === "cancelled") return "отменён";
+    return c.status;
+  }
 
   // ---------- карточка ставки: детали, отчёт, персонаж ----------
   window.openBet = function (id) {
@@ -357,12 +393,261 @@
     }
   };
 
+  // ---------- Вызов: карточка "моего" вызова, отчёт (переиспользует sendReport), корректировка условий ----------
+  window.openChallengeDetail = async function (id) {
+    const app = document.getElementById("app");
+    app.innerHTML = emptyMsg("Загружаю…");
+    await refreshChallenges();
+    ctx.selectedChallengeId = id;
+    drawChallengeMyDetail();
+  };
+  function drawChallengeMyDetail() {
+    const app = document.getElementById("app");
+    const c = (ctx.challenges || []).find(function (x) { return x.id === ctx.selectedChallengeId; });
+    if (!c) { renderHome(); return; }
+    const oppLine = c.opponent ? '<div class="row"><span>Соперник</span><span>' + esc(c.opponent.name) + '</span></div>' : "";
+    const reportBtn = (c.status === "active" && c.my_bet_id) ? '<button onclick="sendReport(' + c.my_bet_id + ')">Отправить отчёт</button>' : "";
+    const adjustBtn = (c.status === "proposed" && c.my_role && !c.pending_adjustment) ? '<button class="btn-secondary" onclick="showAdjustForm()">Предложить изменения</button>' : "";
+    let adjBlock = "";
+    if (c.pending_adjustment) {
+      const a = c.pending_adjustment;
+      if (a.proposed_by_me) {
+        adjBlock = '<div class="card"><div class="muted">Ты предложил(а) изменить: ' + describeAdjustment(a) + '</div><div class="muted" style="margin-top:6px">Ждём ответа соперника.</div></div>';
+      } else {
+        adjBlock = '<div class="card"><div class="muted">Соперник предлагает изменить: ' + describeAdjustment(a) + '</div>' +
+          '<div class="btn-row"><button onclick="respondAdjustment(' + a.id + ',true)">Согласиться</button>' +
+          '<button class="btn-secondary" onclick="respondAdjustment(' + a.id + ',false)">Отклонить</button></div></div>';
+      }
+    }
+    app.innerHTML =
+      '<div class="card"><div class="muted">Вызов #' + c.id + '</div>' +
+      '<div class="big">' + esc(c.goal) + '</div>' +
+      '<div class="row"><span>Тип</span><span>' + (TYPES[c.type] || c.type) + '</span></div>' +
+      '<div class="row"><span>Статус</span><span>' + challengeStatusLabel(c) + '</span></div>' +
+      '<div class="row"><span>Старт</span><span>' + formatRuDate(c.start_date) + '</span></div>' +
+      '<div class="row"><span>Срок</span><span>' + c.duration_days + ' дн.</span></div>' +
+      '<div class="row"><span>Пруф</span><span>' + esc(c.proof_format || "") + '</span></div>' +
+      '<div class="row"><span>Ставка</span><span>' + (c.stake ? c.stake + ' ⭐' : 'без ставки') + '</span></div>' +
+      oppLine + '</div>' +
+      adjBlock + reportBtn + adjustBtn +
+      '<div id="adjust-form-holder"></div>' +
+      '<button class="btn-secondary" onclick="renderHome()">К списку</button>';
+  }
+  function describeAdjustment(a) {
+    const parts = [];
+    if (a.new_start_date) parts.push("старт " + formatRuDate(a.new_start_date));
+    if (a.new_duration_days) parts.push(a.new_duration_days + " дн.");
+    return parts.join(", ") || "условия";
+  }
+  window.showAdjustForm = function () {
+    const holder = document.getElementById("adjust-form-holder");
+    if (!holder) return;
+    const min = new Date(Date.now() + 3 * 3600e3 + 864e5).toISOString().slice(0, 10);
+    holder.innerHTML =
+      '<div class="card"><div class="muted" style="margin-bottom:8px">Новая дата старта (необязательно):</div>' +
+      '<input id="f-adj-date" type="date" min="' + min + '">' +
+      '<div class="muted" style="margin:10px 0 8px">Новый срок в днях (необязательно):</div>' +
+      '<input id="f-adj-days" type="text" inputmode="numeric" placeholder="Например: 45">' +
+      '<div id="f-adj-err" class="err"></div>' +
+      '<button onclick="proposeAdjustment()">Отправить предложение</button></div>';
+  };
+  window.proposeAdjustment = async function () {
+    const c = (ctx.challenges || []).find(function (x) { return x.id === ctx.selectedChallengeId; });
+    if (!c) return;
+    const dateEl = document.getElementById("f-adj-date");
+    const daysEl = document.getElementById("f-adj-days");
+    const dateVal = dateEl ? dateEl.value : "";
+    const daysVal = parseInt(daysEl ? daysEl.value : "", 10);
+    if (!dateVal && !Number.isFinite(daysVal)) { const e = document.getElementById("f-adj-err"); if (e) e.textContent = "Укажи хотя бы одно изменение."; return; }
+    try {
+      const body = { challenge_id: c.id };
+      if (dateVal) body.new_start_date = dateVal;
+      if (Number.isFinite(daysVal)) body.new_duration_days = daysVal;
+      const r = await api("/challenge-adjust-propose", { method: "POST", body: JSON.stringify(body) });
+      if (!r.ok) { const e = document.getElementById("f-adj-err"); if (e) e.textContent = "Не получилось отправить."; return; }
+      await refreshChallenges();
+      drawChallengeMyDetail();
+    } catch (e) {
+      const el = document.getElementById("f-adj-err"); if (el) el.textContent = "Ошибка соединения.";
+    }
+  };
+  window.respondAdjustment = async function (adjId, accept) {
+    try {
+      await api("/challenge-adjust-respond", { method: "POST", body: JSON.stringify({ adjustment_id: adjId, accept: accept }) });
+    } catch (e) { /* молча */ }
+    await refreshChallenges();
+    drawChallengeMyDetail();
+  };
+
+  // ---------- Вызов: экран принятия приглашения (открывается по ?challenge=<token>) ----------
+  window.renderChallengeInvite = async function (token) {
+    const app = document.getElementById("app");
+    app.innerHTML = emptyMsg("Загружаю вызов…");
+    try {
+      const r = await api("/challenge-invite?token=" + encodeURIComponent(token));
+      const data = await r.json();
+      if (!r.ok) {
+        app.innerHTML = emptyMsg("Ссылка недействительна или уже использована.") + '<button class="btn-secondary" onclick="renderHome()">На главный экран</button>';
+        return;
+      }
+      ctx.pendingChallenge = { token: token, data: data };
+      drawChallengeInvite();
+    } catch (e) {
+      app.innerHTML = emptyMsg("Ошибка соединения.") + '<button class="btn-secondary" onclick="renderHome()">На главный экран</button>';
+    }
+  };
+  function drawChallengeInvite() {
+    const app = document.getElementById("app");
+    const ch = ctx.pendingChallenge.data;
+    app.innerHTML =
+      '<div class="card"><div class="muted">Вызов от ' + esc(ch.creator_name) + '</div>' +
+      '<div class="big">' + esc(ch.goal) + '</div>' +
+      '<div class="row"><span>Тип</span><span>' + (TYPES[ch.type] || ch.type) + '</span></div>' +
+      '<div class="row"><span>Старт</span><span>' + formatRuDate(ch.start_date) + '</span></div>' +
+      '<div class="row"><span>Срок</span><span>' + ch.duration_days + ' дн.</span></div>' +
+      '<div class="row"><span>Пруф</span><span>' + esc(ch.proof_format) + '</span></div>' +
+      '<div class="row"><span>Ставка</span><span>' + (ch.stake ? ch.stake + ' ⭐ с каждой стороны' : 'без ставки') + '</span></div></div>' +
+      '<div class="muted" style="text-align:center;margin-bottom:16px">Условия менять нельзя на этом шаге — предложить правки можно будет после того, как оба согласятся.</div>' +
+      '<button onclick="startChallengeAcceptVideo()">Принять вызов</button>' +
+      '<button class="btn-secondary" onclick="declineChallengeInvite()">Отклонить</button>';
+  }
+  window.declineChallengeInvite = async function () {
+    const app = document.getElementById("app");
+    app.innerHTML = emptyMsg("Отклоняю…");
+    try {
+      await api("/challenge-decline", { method: "POST", body: JSON.stringify({ token: ctx.pendingChallenge.token }) });
+    } catch (e) { /* молча */ }
+    app.innerHTML = emptyMsg("Вызов отклонён.") + '<button class="btn-secondary" onclick="renderHome()">На главный экран</button>';
+  };
+  window.startChallengeAcceptVideo = function () {
+    ctx.challengeAcceptDraft = { videoFile: null, videoPreviewUrl: null, cameraError: null };
+    drawChallengeAcceptVideo();
+  };
+  function drawChallengeAcceptVideo() {
+    const app = document.getElementById("app");
+    const ch = ctx.pendingChallenge.data;
+    const d = ctx.challengeAcceptDraft;
+    const nameStr = (ctx.user && ctx.user.name) || "друг";
+    const template = "Я, " + esc(nameStr) + ", принимаю вызов и даю слово, что " + esc(ch.goal) + ".";
+    const templateBlock = '<div class="muted" style="margin-bottom:6px">Прочитай на камеру:</div><div class="card" style="font-weight:600;margin-bottom:10px">«' + template + '»</div>';
+    let body;
+    if (d.videoFile) {
+      body = "<h2>Видео-обещание</h2>" + templateBlock +
+        '<video src="' + d.videoPreviewUrl + '" controls playsinline style="width:100%;border-radius:12px;background:#000"></video>' +
+        '<button class="btn-secondary" onclick="retakeChallengeVideo()">Переснять</button>' +
+        '<div id="f-err" class="err"></div>';
+    } else if (d.cameraError) {
+      body = "<h2>Видео-обещание</h2>" + templateBlock +
+        '<div class="empty">Камера недоступна: ' + esc(d.cameraError) + '<br>Можно прикрепить готовое видео.</div>' +
+        '<input id="f-video" type="file" accept="video/*" onchange="handleChallengeVideoFile(this)">' +
+        '<div id="f-err" class="err"></div>';
+    } else {
+      body = "<h2>Видео-обещание</h2>" + templateBlock +
+        '<video id="camera-preview" autoplay muted playsinline style="width:100%;border-radius:12px;background:#000"></video>' +
+        '<div id="rec-status" class="muted" style="text-align:center;margin-top:8px"></div>' +
+        '<button id="rec-btn" onclick="toggleChallengeRecording()">Записать</button>' +
+        '<div id="f-err" class="err"></div>';
+    }
+    app.innerHTML = body + '<div class="btn-row"><button class="btn-secondary" onclick="drawChallengeInvite()">Назад</button>' +
+      (d.videoFile ? '<button onclick="submitChallengeAccept()">Принять вызов</button>' : "") + "</div>";
+    stopCamera();
+    if (!d.videoFile && !d.cameraError) startCamera(d, drawChallengeAcceptVideo);
+  }
+  window.handleChallengeVideoFile = function (input) {
+    const f = input.files && input.files[0];
+    if (!f) return;
+    if (f.size > MAX_VIDEO_BYTES) { const e = document.getElementById("f-err"); if (e) e.textContent = "Видео слишком большое (максимум 20 МБ)."; input.value = ""; return; }
+    const d = ctx.challengeAcceptDraft;
+    if (d.videoPreviewUrl) URL.revokeObjectURL(d.videoPreviewUrl);
+    d.videoFile = f; d.videoPreviewUrl = URL.createObjectURL(f);
+    drawChallengeAcceptVideo();
+  };
+  window.retakeChallengeVideo = function () {
+    const d = ctx.challengeAcceptDraft;
+    if (d.videoPreviewUrl) URL.revokeObjectURL(d.videoPreviewUrl);
+    d.videoFile = null; d.videoPreviewUrl = null; d.cameraError = null;
+    drawChallengeAcceptVideo();
+  };
+  window.toggleChallengeRecording = function () {
+    const btn = document.getElementById("rec-btn");
+    const status = document.getElementById("rec-status");
+    const d = ctx.challengeAcceptDraft;
+    if (!mediaRecorder || mediaRecorder.state === "inactive") {
+      if (!cameraStream) return;
+      recordedChunks = [];
+      const candidates = ["video/mp4", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"];
+      const mimeType = candidates.find(function (m) { return window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m); }) || "";
+      try {
+        mediaRecorder = mimeType ? new MediaRecorder(cameraStream, { mimeType: mimeType }) : new MediaRecorder(cameraStream);
+      } catch (e) {
+        const el = document.getElementById("f-err"); if (el) el.textContent = "Запись видео не поддерживается в этом Telegram-клиенте.";
+        return;
+      }
+      mediaRecorder.ondataavailable = function (e) { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
+      mediaRecorder.onstop = function () {
+        if (recTimer) { clearInterval(recTimer); recTimer = null; }
+        const blob = new Blob(recordedChunks, { type: mediaRecorder && mediaRecorder.mimeType || "video/webm" });
+        if (blob.size === 0) { const el = document.getElementById("f-err"); if (el) el.textContent = "Не удалось записать видео. Попробуй ещё раз."; return; }
+        if (blob.size > MAX_VIDEO_BYTES) { const el = document.getElementById("f-err"); if (el) el.textContent = "Видео получилось больше 20 МБ — запиши покороче."; return; }
+        const ext = blob.type.indexOf("mp4") !== -1 ? "mp4" : "webm";
+        if (d.videoPreviewUrl) URL.revokeObjectURL(d.videoPreviewUrl);
+        d.videoFile = new File([blob], "oath." + ext, { type: blob.type });
+        d.videoPreviewUrl = URL.createObjectURL(blob);
+        stopCamera();
+        drawChallengeAcceptVideo();
+      };
+      mediaRecorder.start();
+      let secs = 0;
+      if (status) status.textContent = "● Запись — 0:00";
+      recTimer = setInterval(function () {
+        secs++;
+        if (status) status.textContent = "● Запись — " + Math.floor(secs / 60) + ":" + String(secs % 60).padStart(2, "0");
+        if (secs >= 120 && mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
+      }, 1000);
+      if (btn) btn.textContent = "Стоп";
+    } else {
+      mediaRecorder.stop();
+      if (btn) btn.textContent = "Записать";
+    }
+  };
+  async function submitChallengeAccept() {
+    const app = document.getElementById("app");
+    app.innerHTML = emptyMsg("Принимаю вызов…");
+    try {
+      const d = ctx.challengeAcceptDraft;
+      const fd = new FormData();
+      fd.append("token", ctx.pendingChallenge.token);
+      fd.append("video", d.videoFile, d.videoFile.name || "video.mp4");
+      const r = await api("/challenge-accept", { method: "POST", body: fd });
+      const data = await r.json();
+      if (!r.ok) {
+        app.innerHTML = emptyMsg("Не получилось (" + (data.error || "ошибка") + ").") + '<button class="btn-secondary" onclick="drawChallengeAcceptVideo()">Назад</button>';
+        return;
+      }
+      if (data.pending) { openStakeInvoice(data.invoice_link, data.bet_id, "challengeAccept"); }
+      else { finishChallengeAccept(false); }
+    } catch (e) {
+      app.innerHTML = emptyMsg("Ошибка соединения.") + '<button class="btn-secondary" onclick="drawChallengeAcceptVideo()">Назад</button>';
+    }
+  }
+  window.submitChallengeAccept = submitChallengeAccept;
+  function finishChallengeAccept(paid) {
+    const app = document.getElementById("app");
+    app.innerHTML =
+      '<div class="card" style="text-align:center"><div style="font-size:40px;margin-bottom:8px">⚔️</div>' +
+      '<div style="font-size:17px;margin-bottom:6px">Вызов принят</div>' +
+      '<div class="muted">' + (paid ? "Ставка оплачена. " : "") + 'Как только настанет дата старта — начнёте оба одновременно.</div></div>' +
+      '<button class="btn-secondary" onclick="reloadAndHome()">На главный экран</button>';
+  }
+
   // ---------- мастер ставки ----------
   const MAX_VIDEO_BYTES = 20 * 1024 * 1024;
   window.startWizard = function () {
     ctx.draft = {
+      kind: null, // 'solo' | 'challenge' — см. Вызов_фича_спека_v1.md
       mode: null, type: null, goal: "", point_a: "", motivation: "",
-      days: null, _date: "",
+      days: null, _date: "", challenge_start_date: "", proof_format: "",
+      invitee_user_id: null, invitee_label: "", _inviteResults: [],
       habit_tier: null, skip_mode: null, allowed_skip_weekdays: [],
       witness_phone: "", witness_tg: "", witness_checkin_time: "19:00",
       videoFile: null, videoPreviewUrl: null, stake: 0, _exOffset: 0,
@@ -372,10 +657,16 @@
   };
   function stepList() {
     const t = ctx.draft.type;
-    const s = ["mode", "type", "goal"];
+    const isChallenge = ctx.draft.kind === "challenge";
+    const s = ["kind"];
+    if (!isChallenge) s.push("mode");
+    s.push("type", "goal");
     if (t === "result") {
-      s.push("pointA", "motivation", "duration");
+      s.push("pointA", "motivation");
+      if (isChallenge) s.push("startDate");
+      s.push("duration");
     } else if (t === "habit") {
+      if (isChallenge) s.push("startDate");
       s.push("duration", "habitTier");
       if (ctx.draft.habit_tier === "light" || ctx.draft.habit_tier === "normie") {
         s.push("skipMode");
@@ -384,6 +675,7 @@
     } else if (t === "quit") {
       s.push("duration", "witness");
     }
+    if (isChallenge) s.push("proofFormat", "invitee");
     s.push("video", "stake", "review");
     return s;
   }
@@ -396,20 +688,28 @@
     let body = "";
     let showNext = true;
 
-    if (name === "mode") {
+    if (name === "kind") {
+      showNext = false;
+      body = "<h2>Как даёшь слово?</h2>" +
+        '<div class="opt" onclick="pickKind(\'solo\')"><b>Соло</b><div class="muted">Обычная ставка — только ты и твоё слово.</div></div>' +
+        '<div class="opt" onclick="pickKind(\'challenge\')"><b>Вызов</b><div class="muted">Позови конкретного человека — соревнуйтесь на одинаковых условиях, одна дата старта на двоих.</div></div>';
+    } else if (name === "mode") {
       showNext = false;
       body = "<h2>Как даёшь слово?</h2>" +
         '<div class="opt" onclick="pick(\'mode\',\'public\')"><b>Публично</b><div class="muted">Заявление уходит в группу. На тебя смотрят, тебя поддерживают.</div></div>' +
         '<div class="opt" onclick="pick(\'mode\',\'private\')"><b>Лично</b><div class="muted">Только ты и бот. Тихо, но по-настоящему.</div></div>';
     } else if (name === "type") {
       showNext = false;
+      const isChallenge = d.kind === "challenge";
       body = "<h2>На что даёшь слово?</h2>" +
         '<div class="opt" onclick="pick(\'type\',\'result\')"><b>Результат</b><div class="muted">Достичь цели к сроку</div>' +
         '<div class="muted" style="font-size:12.5px;margin-top:4px">' + esc(EXAMPLES.result.slice(0, 4).join(" · ")) + '</div></div>' +
         '<div class="opt" onclick="pick(\'type\',\'habit\')"><b>Привычка</b><div class="muted">Регулярно выполнять действие</div>' +
         '<div class="muted" style="font-size:12.5px;margin-top:4px">' + esc(EXAMPLES.habit.slice(0, 4).join(" · ")) + '</div></div>' +
-        '<div class="opt" onclick="pick(\'type\',\'quit\')"><b>Отказ</b><div class="muted">Отказаться от чего-то на срок</div>' +
-        '<div class="muted" style="font-size:12.5px;margin-top:4px">' + esc(EXAMPLES.quit.slice(0, 4).join(" · ")) + '</div></div>';
+        (isChallenge ? "" :
+          '<div class="opt" onclick="pick(\'type\',\'quit\')"><b>Отказ</b><div class="muted">Отказаться от чего-то на срок</div>' +
+          '<div class="muted" style="font-size:12.5px;margin-top:4px">' + esc(EXAMPLES.quit.slice(0, 4).join(" · ")) + '</div></div>') +
+        (isChallenge ? '<div class="muted" style="margin-top:8px;font-size:12.5px">В Вызове доступны Результат и Привычка — Отказ завязан на личного свидетеля, тут не пересекаемся.</div>' : "");
     } else if (name === "goal") {
       const t = d.type;
       const ex = EXAMPLES[t] || [];
@@ -442,8 +742,22 @@
         '<div class="muted" style="margin-bottom:10px">Одно-два предложения — то, что вспомнишь на финише, если станет тяжело.</div>' +
         '<textarea id="f-mot" placeholder="Например: чтобы чувствовать себя увереннее — или просто потому что обещал">' + esc(d.motivation) + "</textarea>" +
         '<div id="f-err" class="err"></div>';
-    } else if (name === "duration") {
+    } else if (name === "startDate") {
       const min = new Date(Date.now() + 3 * 3600e3 + 864e5).toISOString().slice(0, 10);
+      const chips = '<div class="chips"><div class="chip" onclick="pickChallengeStart(1)">Завтра</div>' +
+        '<div class="chip" onclick="pickChallengeStart(3)">Через 3 дня</div>' +
+        '<div class="chip" onclick="pickChallengeStart(7)">Через неделю</div></div>';
+      body = "<h2>Когда стартуете?</h2>" +
+        '<div class="muted" style="margin-bottom:10px">Оба участника начинают день 1 одновременно — в эту дату.</div>' +
+        chips +
+        '<div class="muted" style="margin:12px 0 6px">Или выбери дату:</div>' +
+        '<input id="f-cstart" type="date" min="' + min + '" value="' + d.challenge_start_date + '" onchange="pickChallengeStartDate(this.value)">' +
+        (d.challenge_start_date ? '<div class="muted" style="margin-top:8px">Старт: ' + formatRuDate(d.challenge_start_date) + "</div>" : "") +
+        '<div id="f-err" class="err"></div>';
+    } else if (name === "duration") {
+      const min = d.kind === "challenge" && d.challenge_start_date
+        ? new Date(new Date(d.challenge_start_date + "T00:00:00Z").getTime() + 864e5).toISOString().slice(0, 10)
+        : new Date(Date.now() + 3 * 3600e3 + 864e5).toISOString().slice(0, 10);
       let chips = "";
       if (d.type === "habit") {
         chips = '<div class="chips"><div class="chip" onclick="pickDays(21)">21 день</div><div class="chip" onclick="pickDays(40)">40 дней</div></div>' +
@@ -494,6 +808,22 @@
         '<div class="muted" style="margin:14px 0 6px">Во сколько бот будет проверять (минимум раз в неделю)?</div>' +
         '<div class="chips">' + timeChips + "</div>" +
         '<div id="f-err" class="err"></div>';
+    } else if (name === "proofFormat") {
+      const opts = [["видео", "Видео"], ["фото", "Фото"], ["текст", "Текст"]];
+      const chips = opts.map(function (o) {
+        const active = d.proof_format === o[0] ? " active-chip" : "";
+        return '<div class="chip' + active + '" onclick="pickProofFormat(\'' + o[0] + '\')">' + o[1] + "</div>";
+      }).join("");
+      body = "<h2>Как подтверждаете?</h2>" +
+        '<div class="muted" style="margin-bottom:10px">Выберите один формат пруфа — одинаковый для обеих сторон.</div>' +
+        '<div class="chips">' + chips + "</div>" +
+        '<div id="f-err" class="err"></div>';
+    } else if (name === "invitee") {
+      body = "<h2>Кого вызываешь?</h2>" +
+        '<div class="muted" style="margin-bottom:10px">Введи его @username в Telegram или найди по имени.</div>' +
+        '<input id="f-invitee" type="text" placeholder="@username или имя" value="' + escAttr(d.invitee_label || "") + '" oninput="searchInvitee(this.value)">' +
+        '<div id="invitee-results" style="margin-top:10px">' + renderInviteeResults() + "</div>" +
+        '<div id="f-err" class="err"></div>';
     } else if (name === "video") {
       showNext = !!d.videoFile;
       const nameStr = (ctx.user && ctx.user.name) || "друг";
@@ -524,7 +854,8 @@
       }
     } else if (name === "stake") {
       body = "<h2>Ставка</h2>" +
-        '<div class="muted" style="margin-bottom:10px">Сумма в Stars — символическая ставка усиливает решимость. Выше ставка — выше очки драйва.</div>' +
+        '<div class="muted" style="margin-bottom:10px">Сумма в Stars — символическая ставка усиливает решимость. Выше ставка — выше очки драйва.' +
+        (d.kind === "challenge" ? " В Вызове ставка одинаковая для обеих сторон." : "") + "</div>" +
         '<div class="chips">' +
         '<div class="chip" onclick="pickStake(0)">Без ставки</div>' +
         '<div class="chip" onclick="pickStake(100)">100 ⭐</div>' +
@@ -538,28 +869,37 @@
         '<a href="https://t.me/vseznayka_stars_bot" target="_blank" style="display:block;text-align:center;padding:10px;border-radius:10px;border:1px solid var(--border);color:var(--gold2);text-decoration:none;font-size:14px">Открыть @vseznayka_stars_bot</a>' +
         '<div class="muted" style="font-size:11.5px;margin-top:8px">Это сторонний сервис, не связанный с Сила Слова. Мы не можем гарантировать его работу — прежде чем платить, проверь отзывы сам.</div></div>';
     } else if (name === "review") {
+      const isChallenge = d.kind === "challenge";
       const rows = [];
-      rows.push('<div class="row"><span>Режим</span><span>' + (d.mode === "public" ? "Публично" : "Лично") + "</span></div>");
+      if (!isChallenge) rows.push('<div class="row"><span>Режим</span><span>' + (d.mode === "public" ? "Публично" : "Лично") + "</span></div>");
       rows.push('<div class="row"><span>Тип</span><span>' + TYPES[d.type] + "</span></div>");
       rows.push('<div class="row"><span>Цель</span><span>' + esc(d.goal) + "</span></div>");
       if (d.type === "result") {
         rows.push('<div class="row"><span>Точка А</span><span>' + esc(d.point_a) + "</span></div>");
         rows.push('<div class="row"><span>Ради чего</span><span>' + esc(d.motivation) + "</span></div>");
-        rows.push('<div class="row"><span>Финиш</span><span>' + formatRuDate(d._date) + "</span></div>");
+        if (!isChallenge) rows.push('<div class="row"><span>Финиш</span><span>' + formatRuDate(d._date) + "</span></div>");
       } else if (d.type === "habit") {
-        rows.push('<div class="row"><span>Срок</span><span>' + formatRuDate(d._date) + " · " + d.days + " дн.</span></div>");
         rows.push('<div class="row"><span>Уровень</span><span>' + (HABIT_TIER_LABELS[d.habit_tier] || "") + "</span></div>");
       } else if (d.type === "quit") {
-        rows.push('<div class="row"><span>Срок</span><span>' + formatRuDate(d._date) + " · " + d.days + " дн.</span></div>");
         rows.push('<div class="row"><span>Свидетель</span><span>' + esc(d.witness_tg) + "</span></div>");
         rows.push('<div class="row"><span>Проверка</span><span>' + d.witness_checkin_time + "</span></div>");
+      }
+      if (isChallenge) {
+        rows.push('<div class="row"><span>Старт</span><span>' + formatRuDate(d.challenge_start_date) + "</span></div>");
+        rows.push('<div class="row"><span>Срок</span><span>' + d.days + " дн.</span></div>");
+        rows.push('<div class="row"><span>Пруф</span><span>' + esc(d.proof_format) + "</span></div>");
+        rows.push('<div class="row"><span>Соперник</span><span>' + esc(d.invitee_label) + "</span></div>");
+      } else if (d.type !== "result") {
+        rows.push('<div class="row"><span>Срок</span><span>' + formatRuDate(d._date) + " · " + d.days + " дн.</span></div>");
       }
       rows.push('<div class="row"><span>Видео</span><span>' + (d.videoFile ? "прикреплено ✓" : "нет") + "</span></div>");
       rows.push('<div class="row"><span>Ставка</span><span>' + (d.stake ? d.stake + " ⭐" : "без ставки") + "</span></div>");
       body = "<h2>Проверь и вперёд</h2>" +
         '<div class="card">' + rows.join("") + "</div>" +
         '<div class="muted" style="text-align:center;margin-bottom:16px">' +
-        (d.stake ? "Подтверждаешь — сразу откроется оплата " + d.stake + " ⭐. Карточка публикуется сразу после оплаты, не выходя из приложения." : "Подтверждаешь — публикуем сразу, не выходя из приложения.") +
+        (isChallenge
+          ? "Отправляем вызов сопернику" + (d.stake ? " и откроется оплата твоей ставки " + d.stake + " ⭐" : "") + ". Оба стартуете вместе, как только он примет" + (d.stake ? " и тоже оплатит" : "") + "."
+          : (d.stake ? "Подтверждаешь — сразу откроется оплата " + d.stake + " ⭐. Карточка публикуется сразу после оплаты, не выходя из приложения." : "Подтверждаешь — публикуем сразу, не выходя из приложения.")) +
         "</div>";
     }
 
@@ -567,7 +907,7 @@
       ? '<button class="btn-secondary" onclick="wizBack()">Назад</button>'
       : '<button class="btn-secondary" onclick="renderHome()">Отмена</button>';
     const nextBtn = showNext
-      ? '<button onclick="wizNext()">' + (name === "review" ? "Дать слово" : "Далее") + "</button>"
+      ? '<button onclick="wizNext()">' + (name === "review" ? (d.kind === "challenge" ? "Отправить вызов" : "Дать слово") : "Далее") + "</button>"
       : "";
 
     app.innerHTML =
@@ -579,17 +919,72 @@
     // живая камера нужна только на шаге "video", пока не записано и камера не отказала —
     // на любом другом шаге (или при повторном заходе) сначала гасим прошлый поток
     stopCamera();
-    if (name === "video" && !d.videoFile && !d.cameraError) startCamera();
+    if (name === "video" && !d.videoFile && !d.cameraError) startCamera(d, renderWizard);
   };
 
   window.pick = function (key, val) { ctx.draft[key] = val; wizNext(); };
+  window.pickKind = function (v) {
+    ctx.draft.kind = v;
+    if (v === "challenge") ctx.draft.mode = "private"; // Вызов в Фазе 1 всегда приватный между сторонами
+    wizNext();
+  };
+  window.pickChallengeStart = function (daysAhead) {
+    const dt = new Date(Date.now() + 3 * 3600e3 + daysAhead * 864e5);
+    ctx.draft.challenge_start_date = dt.toISOString().slice(0, 10);
+    renderWizard();
+  };
+  window.pickChallengeStartDate = function (v) {
+    ctx.draft.challenge_start_date = v;
+    renderWizard();
+  };
+  window.pickProofFormat = function (v) { ctx.draft.proof_format = v; renderWizard(); };
+  function renderInviteeResults() {
+    const results = ctx.draft._inviteResults || [];
+    return results.map(function (u) {
+      const label = u.username ? "@" + u.username : u.name;
+      const mark = ctx.draft.invitee_user_id === u.id ? ' <span style="color:var(--gold2)">✓</span>' : "";
+      return '<div class="opt" style="padding:10px 14px;margin-bottom:6px" onclick="pickInvitee(' + u.id + ',' + JSON.stringify(label) + ')">' +
+        '<b style="font-size:14px">' + esc(u.name) + "</b>" + (u.username ? ' <span class="muted">@' + esc(u.username) + "</span>" : "") + mark + "</div>";
+    }).join("");
+  }
+  let inviteSearchTimer = null;
+  window.searchInvitee = function (v) {
+    ctx.draft.invitee_label = v;
+    ctx.draft.invitee_user_id = null;
+    if (inviteSearchTimer) clearTimeout(inviteSearchTimer);
+    const q = v.trim().replace(/^@/, "");
+    if (q.length < 2) { ctx.draft._inviteResults = []; const box = document.getElementById("invitee-results"); if (box) box.innerHTML = ""; return; }
+    inviteSearchTimer = setTimeout(async function () {
+      try {
+        const r = await api("/users-search?q=" + encodeURIComponent(q));
+        const data = await r.json();
+        ctx.draft._inviteResults = (r.ok && data.users) ? data.users : [];
+      } catch (e) { ctx.draft._inviteResults = []; }
+      const box = document.getElementById("invitee-results");
+      if (box) box.innerHTML = renderInviteeResults();
+    }, 300);
+  };
+  window.pickInvitee = function (id, label) {
+    ctx.draft.invitee_user_id = id;
+    ctx.draft.invitee_label = label;
+    const inputEl = document.getElementById("f-invitee");
+    if (inputEl) inputEl.value = label;
+    const box = document.getElementById("invitee-results");
+    if (box) box.innerHTML = renderInviteeResults();
+  };
   window.pickDays = function (n) {
-    const dt = new Date(Date.now() + 3 * 3600e3 + n * 864e5);
+    const base = (ctx.draft.kind === "challenge" && ctx.draft.challenge_start_date)
+      ? new Date(ctx.draft.challenge_start_date + "T00:00:00Z")
+      : new Date(Date.now() + 3 * 3600e3);
+    const dt = new Date(base.getTime() + n * 864e5);
     ctx.draft.days = n; ctx.draft._date = dt.toISOString().slice(0, 10);
     renderWizard();
   };
   window.pickDate = function (v) {
-    const from = new Date(new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10) + "T00:00:00Z");
+    const fromStr = (ctx.draft.kind === "challenge" && ctx.draft.challenge_start_date)
+      ? ctx.draft.challenge_start_date
+      : new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10);
+    const from = new Date(fromStr + "T00:00:00Z");
     const to = new Date(v + "T00:00:00Z");
     const days = Math.round((to - from) / 864e5);
     ctx.draft.days = days; ctx.draft._date = v;
@@ -652,11 +1047,13 @@
     }
   }
 
-  async function startCamera() {
+  // targetDraft/rerender — обобщено, чтобы этой же камерой пользовался и мастер соло-ставки
+  // (ctx.draft + renderWizard), и экран принятия Вызова (ctx.challengeAcceptDraft + drawChallengeAcceptVideo)
+  async function startCamera(targetDraft, rerender) {
     const videoEl = document.getElementById("camera-preview");
     if (!videoEl || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      ctx.draft.cameraError = "не поддерживается этим браузером";
-      renderWizard();
+      targetDraft.cameraError = "не поддерживается этим браузером";
+      rerender();
       return;
     }
     try {
@@ -664,8 +1061,8 @@
       cameraStream = stream;
       videoEl.srcObject = stream;
     } catch (e) {
-      ctx.draft.cameraError = (e && e.message) ? e.message : "нет доступа к камере";
-      renderWizard();
+      targetDraft.cameraError = (e && e.message) ? e.message : "нет доступа к камере";
+      rerender();
     }
   }
 
@@ -742,8 +1139,16 @@
   window.wizNext = async function () {
     const d = ctx.draft;
     const name = curName();
+    if (name === "kind" && !d.kind) return err("Выбери вариант.");
     if (name === "mode" && !d.mode) return err("Выбери вариант.");
     if (name === "type" && !d.type) return err("Выбери вариант.");
+    if (name === "startDate" && !d.challenge_start_date) return err("Выбери дату старта.");
+    if (name === "proofFormat" && !d.proof_format) return err("Выбери формат пруфа.");
+    if (name === "invitee") {
+      const v = document.getElementById("f-invitee").value.trim();
+      if (v.length < 2) return err("Укажи, кого вызываешь.");
+      d.invitee_label = v;
+    }
     if (name === "goal") {
       const v = document.getElementById("f-goal").value.trim();
       if (!v) return err("Напиши цель.");
@@ -779,9 +1184,80 @@
     if (name === "video") {
       if (!d.videoFile) return err("Прикрепи видео — без него слово не считается.");
     }
-    if (name === "review") { return submitCreate(); }
+    if (name === "review") { return d.kind === "challenge" ? submitCreateChallenge() : submitCreate(); }
     ctx.step++;
     renderWizard();
+  };
+
+  async function submitCreateChallenge() {
+    const app = document.getElementById("app");
+    app.innerHTML = emptyMsg("Отправляю вызов…");
+    try {
+      const d = ctx.draft;
+      const fd = new FormData();
+      const draftPayload = {
+        type: d.type, goal: d.goal, duration_days: d.days, start_date: d.challenge_start_date,
+        proof_format: d.proof_format, invitee: d.invitee_label, stake: d.stake || 0,
+      };
+      if (d.type === "result") { draftPayload.point_a = d.point_a; draftPayload.motivation = d.motivation; }
+      if (d.type === "habit") { draftPayload.habit_tier = d.habit_tier; draftPayload.skip_mode = d.skip_mode; draftPayload.allowed_skip_weekdays = d.allowed_skip_weekdays || []; }
+      fd.append("draft", JSON.stringify(draftPayload));
+      fd.append("video", d.videoFile, d.videoFile.name || "video.mp4");
+      const r = await api("/challenge-create", { method: "POST", body: fd });
+      const data = await r.json();
+      if (!r.ok) {
+        app.innerHTML = emptyMsg("Не получилось (" + (data.error || "ошибка") + "). Вернись и попробуй снова.") +
+          '<button onclick="renderWizard()">Назад к форме</button>';
+        return;
+      }
+      ctx.lastChallengeInvite = data.invite || null;
+      if (data.pending) { openStakeInvoice(data.invoice_link, data.bet_id, "challenge"); }
+      else { finishChallengeCreate(false); }
+    } catch (e) {
+      app.innerHTML = emptyMsg("Ошибка соединения. Попробуй ещё раз.") + '<button onclick="renderWizard()">Назад к форме</button>';
+    }
+  }
+
+  function finishChallengeCreate(paid) {
+    const app = document.getElementById("app");
+    const inv = ctx.lastChallengeInvite;
+    const inviteBlock = inv
+      ? '<div class="card" style="text-align:center"><div class="muted" style="margin-bottom:8px">Перешли эту ссылку или QR тому, кого вызываешь:</div>' +
+        '<img src="' + escAttr(inv.qr) + '" alt="QR" style="width:160px;height:160px;border-radius:12px;margin-bottom:8px">' +
+        '<div style="word-break:break-all;font-size:13px;color:var(--gold2);margin-bottom:10px">' + esc(inv.link) + "</div>" +
+        '<div style="display:flex;gap:8px"><button class="btn-secondary" style="flex:1;margin:0" onclick="shareChallengeInvite()">Поделиться</button>' +
+        '<button class="btn-secondary" style="flex:1;margin:0" onclick="copyChallengeInvite(this)">Скопировать</button></div></div>'
+      : "";
+    const note = paid
+      ? '<div class="muted" style="text-align:center;margin-bottom:12px">⭐ Твоя ставка оплачена. Ждём, пока соперник примет и тоже поставит на кон.</div>'
+      : '<div class="muted" style="text-align:center;margin-bottom:12px">Ждём, пока соперник примет вызов.</div>';
+    app.innerHTML =
+      '<div class="card" style="text-align:center"><div style="font-size:40px;margin-bottom:8px">⚔️</div>' +
+      '<div style="font-size:17px;margin-bottom:6px">Вызов отправлен</div>' +
+      '<div class="muted">Как только соперник примет — оба начнёте одновременно.</div></div>' +
+      note + inviteBlock +
+      '<button class="btn-secondary" onclick="reloadAndHome()">На главный экран</button>';
+  }
+  window.shareChallengeInvite = function () {
+    const inv = ctx.lastChallengeInvite;
+    if (!inv) return;
+    const shareUrl = "https://t.me/share/url?url=" + encodeURIComponent(inv.link) + "&text=" + encodeURIComponent("Вызываю тебя в Сила Слова");
+    if (tg && typeof tg.openTelegramLink === "function") tg.openTelegramLink(shareUrl);
+    else window.open(shareUrl, "_blank");
+  };
+  window.copyChallengeInvite = async function (btn) {
+    const inv = ctx.lastChallengeInvite;
+    if (!inv) return;
+    try {
+      await navigator.clipboard.writeText(inv.link);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = inv.link; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); } catch {}
+      document.body.removeChild(ta);
+    }
+    if (btn) { const prev = btn.textContent; btn.textContent = "Скопировано ✓"; setTimeout(() => { btn.textContent = prev; }, 1500); }
   };
 
   async function submitCreate() {
@@ -825,7 +1301,8 @@
   // ставка > 0: карточка ЕЩЁ НЕ существует для остальных — она публикуется только после
   // того, как звёзды реально списаны (подтверждение приходит на вебхук бота отдельным
   // апдейтом, поэтому после tg.openInvoice() дожидаемся, пока ставка станет active).
-  window.openStakeInvoice = function (link, betId) {
+  window.openStakeInvoice = function (link, betId, kind) {
+    kind = kind || "solo"; // 'solo' | 'challenge' (создатель) | 'challengeAccept' (приглашённый)
     const app = document.getElementById("app");
     if (!link) {
       app.innerHTML = emptyMsg("Не удалось создать оплату. Ставка сохранена как «ждёт оплаты» — попробуй ещё раз из списка ставок.") +
@@ -840,11 +1317,19 @@
     }
     tg.openInvoice(link, async function (status) {
       if (status === "paid") {
-        app.innerHTML = emptyMsg("Оплата прошла — публикую карточку…");
-        const ok = await pollUntilActive(betId, 8, 1200);
-        finishWizard(betId, true, ok ? "active" : "processing");
+        if (kind === "solo") {
+          app.innerHTML = emptyMsg("Оплата прошла — публикую карточку…");
+          const ok = await pollUntilActive(betId, 8, 1200);
+          finishWizard(betId, true, ok ? "active" : "processing");
+        } else if (kind === "challenge") {
+          finishChallengeCreate(true);
+        } else if (kind === "challengeAccept") {
+          finishChallengeAccept(true);
+        }
       } else {
-        finishWizard(betId, false, status);
+        if (kind === "solo") finishWizard(betId, false, status);
+        else if (kind === "challenge") finishChallengeCreate(false);
+        else if (kind === "challengeAccept") finishChallengeAccept(false);
       }
     });
   };
