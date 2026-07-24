@@ -440,7 +440,7 @@
     } else if (name === "motivation") {
       body = "<h2>Для чего ты это делаешь?</h2>" +
         '<div class="muted" style="margin-bottom:10px">Одно-два предложения — то, что вспомнишь на финише, если станет тяжело.</div>' +
-        '<textarea id="f-mot" placeholder="Например: чтобы чувствовать себя увереннее">' + esc(d.motivation) + "</textarea>" +
+        '<textarea id="f-mot" placeholder="Например: чтобы чувствовать себя увереннее — или просто потому что обещал">' + esc(d.motivation) + "</textarea>" +
         '<div id="f-err" class="err"></div>';
     } else if (name === "duration") {
       const min = new Date(Date.now() + 3 * 3600e3 + 864e5).toISOString().slice(0, 10);
@@ -524,14 +524,14 @@
       }
     } else if (name === "stake") {
       body = "<h2>Ставка</h2>" +
-        '<div class="muted" style="margin-bottom:10px">Сумма в Stars — символическая ставка усиливает решимость.</div>' +
+        '<div class="muted" style="margin-bottom:10px">Сумма в Stars — символическая ставка усиливает решимость. Выше ставка — выше очки драйва.</div>' +
         '<div class="chips">' +
         '<div class="chip" onclick="pickStake(0)">Без ставки</div>' +
-        '<div class="chip" onclick="pickStake(1)">1 ⭐</div>' +
-        '<div class="chip" onclick="pickStake(5)">5 ⭐</div>' +
-        '<div class="chip" onclick="pickStake(10)">10 ⭐</div></div>' +
+        '<div class="chip" onclick="pickStake(100)">100 ⭐</div>' +
+        '<div class="chip" onclick="pickStake(1000)">1000 ⭐</div>' +
+        '<div class="chip" onclick="pickStake(10000)">10000 ⭐</div></div>' +
         '<div class="muted" style="margin:12px 0 6px">Или своя сумма:</div>' +
-        '<input id="f-stake" type="text" inputmode="numeric" placeholder="Например: 25" value="' + (d.stake || "") + '" oninput="onStakeInput(this.value)">' +
+        '<input id="f-stake" type="text" inputmode="numeric" placeholder="Например: 250" value="' + (d.stake || "") + '" oninput="onStakeInput(this.value)">' +
         '<div id="stake-note" class="muted" style="margin-top:8px">' + (d.stake ? d.stake + " ⭐ будет списано при подтверждении." : "Пока без ставки — только слово.") + "</div>" +
         '<div class="info-box" style="margin-top:14px"><b style="display:block;margin-bottom:4px">Нет звёзд, а платёж из России?</b>' +
         '<div class="muted" style="font-size:13px;margin-bottom:8px">Купить Stars можно через Telegram-бота @vseznayka_stars_bot — самый простой вариант, прямо в чате.</div>' +
@@ -730,7 +730,7 @@
   };
   window.onStakeInput = function (v) {
     const n = parseInt(v, 10);
-    ctx.draft.stake = Number.isFinite(n) && n > 0 ? Math.min(n, 2500) : 0;
+    ctx.draft.stake = Number.isFinite(n) && n > 0 ? Math.min(n, 10000) : 0;
     const note = document.getElementById("stake-note");
     if (note) note.textContent = ctx.draft.stake ? ctx.draft.stake + " ⭐ будет списано при подтверждении." : "Пока без ставки — только слово.";
   };
@@ -747,7 +747,8 @@
     if (name === "goal") {
       const v = document.getElementById("f-goal").value.trim();
       if (!v) return err("Напиши цель.");
-      if (d.type !== "quit" && !/\d/.test(v)) return err("Добавь цифру или дату — как поймём, что дошёл?");
+      // цифра/дата — это подсказка, а не обязаловка: не блокируем переход, просто напоминаем
+      if (d.type !== "quit" && !/\d/.test(v)) err("Совет: цифра или дата помогает понять, что ты дошёл — но не обязательна.");
       d.goal = v;
     }
     if (name === "pointA") {
@@ -865,7 +866,9 @@
     const witnessBlock = wi
       ? '<div class="card" style="text-align:center"><div class="muted" style="margin-bottom:8px">Перешли эту ссылку или QR своему свидетелю:</div>' +
         '<img src="' + escAttr(wi.qr) + '" alt="QR" style="width:160px;height:160px;border-radius:12px;margin-bottom:8px">' +
-        '<div style="word-break:break-all;font-size:13px;color:var(--gold2)">' + esc(wi.link) + "</div></div>"
+        '<div style="word-break:break-all;font-size:13px;color:var(--gold2);margin-bottom:10px">' + esc(wi.link) + "</div>" +
+        '<div style="display:flex;gap:8px"><button class="btn-secondary" style="flex:1;margin:0" onclick="shareWitnessLink()">Поделиться</button>' +
+        '<button class="btn-secondary" style="flex:1;margin:0" onclick="copyWitnessLink(this)">Скопировать</button></div></div>'
       : "";
     app.innerHTML =
       '<div class="card" style="text-align:center"><div style="font-size:40px;margin-bottom:8px">🎬</div>' +
@@ -875,6 +878,30 @@
       '<button onclick="goToPersonaAfterCreate(' + betId + ')">Выбрать персонажа</button>' +
       '<button class="btn-secondary" onclick="reloadAndHome()">К списку ставок</button>';
   }
+
+  // ---------- шаринг ссылки-приглашения свидетелю: раньше её можно было только скриншотить ----------
+  window.shareWitnessLink = function () {
+    const wi = ctx.lastWitnessInvite;
+    if (!wi) return;
+    const shareUrl = "https://t.me/share/url?url=" + encodeURIComponent(wi.link) +
+      "&text=" + encodeURIComponent("Будь моим свидетелем в Сила Слова");
+    if (tg && typeof tg.openTelegramLink === "function") tg.openTelegramLink(shareUrl);
+    else window.open(shareUrl, "_blank");
+  };
+  window.copyWitnessLink = async function (btn) {
+    const wi = ctx.lastWitnessInvite;
+    if (!wi) return;
+    try {
+      await navigator.clipboard.writeText(wi.link);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = wi.link; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); } catch {}
+      document.body.removeChild(ta);
+    }
+    if (btn) { const prev = btn.textContent; btn.textContent = "Скопировано ✓"; setTimeout(() => { btn.textContent = prev; }, 1500); }
+  };
 
   window.goToPersonaAfterCreate = async function (betId) {
     await refreshStatus();
