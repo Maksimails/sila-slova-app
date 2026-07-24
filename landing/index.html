@@ -3,383 +3,598 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Сила Слова — здесь слово имеет цену</title>
-<meta name="description" content="Дай слово на камеру. Поставь на кон то, что для тебя дорого. Держи — или все узнают, чего оно стоило. Только ты против тебя." />
+<title>Сила Слова — платформа, где слово имеет цену</title>
+<meta name="description" content="Дай слово на камеру. Поставь на кон то, что дорого. Отчитывайся каждый день перед ИИ-наставником или свидетелем. Держи — или все узнают, чего оно стоило." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0c0d10; --panel: #16181d; --panel2: #1c1f26; --border: #2a2d35; --text: #eceef2;
-    --muted: #90959f; --gold: #e8b04b; --gold2: #f2c86b;
+    --bg: #ffffff; --bg-soft: #f6f6f7; --ink: #111114; --muted: #6c6f78; --line: #e6e6e9;
+    --gold: #b8790f; --gold-bg: #e8b04b; --gold-soft: #fbeed7;
+    --crimson: #c0392f; --teal: #1c8c6c;
+    --dark: #0c0d10;
   }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
-  body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    overflow-x: hidden;
-  }
-  .wrap { max-width: 720px; margin: 0 auto; padding: 0 22px; }
-  .eyebrow { font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: .18em; text-transform: uppercase;
-    font-size: 12px; color: var(--gold2); text-align: center; margin-bottom: 14px; }
-  h1, h2, h3 { font-family: 'Playfair Display', serif; margin: 0; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Manrope', -apple-system, sans-serif;
+    overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 800px; margin: 0 auto; padding: 0 22px; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+    font-size: 12px; color: var(--gold); margin-bottom: 16px; }
+  .eyebrow::before { content: ""; width: 16px; height: 2px; background: var(--gold); display: inline-block; }
+  .sec-dark .eyebrow, .sec-dark .eyebrow::before { color: var(--gold-bg); background: var(--gold-bg); }
+  h1, h2, h3 { font-family: 'Manrope', sans-serif; margin: 0; letter-spacing: -.01em; }
   .muted { color: var(--muted); }
+  a { color: inherit; }
+  strong.hl { color: var(--gold); font-weight: 800; }
+  .sec-dark strong.hl { color: var(--gold-bg); }
+  strong.hl-red { color: var(--crimson); font-weight: 800; }
 
-  /* ---------- фоновый саундтрек ---------- */
-  #sound-toggle {
-    position: fixed; top: 16px; right: 16px; z-index: 50;
-    display: flex; align-items: center; gap: 8px;
-    background: rgba(22,24,29,.75); backdrop-filter: blur(6px);
-    border: 1px solid var(--border); border-radius: 30px; padding: 8px 14px 8px 10px;
-    font-size: 12px; color: var(--muted); cursor: pointer; user-select: none;
-    transition: border-color .2s, color .2s;
-  }
-  #sound-toggle:hover { border-color: var(--gold); color: var(--gold2); }
-  #sound-toggle .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
-  #sound-toggle.playing .dot { background: var(--gold); box-shadow: 0 0 8px var(--gold); animation: pulse 1.6s ease-in-out infinite; }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+  /* ---------- nav ---------- */
+  header { position: sticky; top: 0; z-index: 60; background: rgba(255,255,255,.86); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line); }
+  .nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 22px; max-width: 1000px; margin: 0 auto; }
+  .logo { font-weight: 800; font-size: 18px; letter-spacing: -.01em; text-decoration: none; }
+  .nav-links { display: none; gap: 26px; font-weight: 600; font-size: 14.5px; }
+  .nav-links a { text-decoration: none; color: var(--ink); opacity: .75; }
+  .nav-links a:hover { opacity: 1; }
+  .nav-cta { display: none; }
+  .nav-right { display: flex; align-items: center; gap: 14px; }
+  .burger { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: none; display: flex;
+    flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; }
+  .burger span { width: 16px; height: 2px; background: var(--ink); display: block; }
+  .mnav { display: none; position: fixed; inset: 0 0 auto 0; top: 65px; background: #fff; z-index: 59; border-bottom: 1px solid var(--line);
+    padding: 10px 22px 24px; flex-direction: column; gap: 2px; }
+  .mnav.open { display: flex; }
+  .mnav a { text-decoration: none; color: var(--ink); font-weight: 700; font-size: 16px; padding: 13px 4px; border-bottom: 1px solid var(--line); }
+  .mnav a:last-child { border-bottom: none; }
+
+  /* ---------- buttons ---------- */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; padding: 15px 24px;
+    border-radius: 13px; font-weight: 700; font-size: 15.5px; letter-spacing: -.005em; border: none; cursor: pointer; }
+  .btn-gold { background: linear-gradient(135deg, var(--gold-bg), #cc9530); color: #1a1200; box-shadow: 0 10px 26px -10px rgba(184,121,15,.55); }
+  .btn-outline { background: transparent; border: 1.5px solid var(--line); color: var(--ink); }
+  .sec-dark .btn-outline { border-color: #33343a; color: #fff; }
+  .btn-block { width: 100%; }
+  .btn-row { display: flex; flex-direction: column; gap: 12px; }
+
+  /* ---------- sections ---------- */
+  section.sec { padding: 84px 0; }
+  .sec-soft { background: var(--bg-soft); }
+  .sec-dark { background: var(--dark); color: #f2f2f4; }
+  .sec-dark .muted { color: #9a9ca6; }
+  .section-title { font-size: clamp(26px, 6vw, 36px); line-height: 1.22; font-weight: 800; margin-bottom: 16px; }
+  .section-lead { color: var(--muted); font-size: 16.5px; line-height: 1.6; max-width: 560px; }
+  .sec-dark .section-lead { color: #b7b9c2; }
+  .center { text-align: center; }
+  .center .section-lead { margin-left: auto; margin-right: auto; }
+
+  /* ---------- reveal animation ---------- */
+  .reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s ease; }
+  .reveal.in { opacity: 1; transform: translateY(0); }
+  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
 
   /* ---------- hero ---------- */
-  .hero { min-height: 100svh; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    text-align: center; padding: 100px 22px 60px; position: relative; }
-  .hero::before { content: ""; position: absolute; inset: 0; z-index: -1;
-    background: radial-gradient(ellipse 60% 50% at 50% 20%, rgba(232,176,75,.10), transparent 70%); }
-  .hero h1 { font-size: clamp(30px, 7vw, 52px); line-height: 1.14; font-weight: 700; letter-spacing: -.01em; }
-  .hero h1 em { font-style: italic; color: var(--gold2); }
-  .hero .sub { margin-top: 22px; font-size: clamp(16px, 2.6vw, 19px); color: var(--muted); max-width: 480px; line-height: 1.55; }
-  .hero .tagline { margin-top: 30px; font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: .08em;
-    text-transform: uppercase; font-size: 14px; color: var(--gold); }
+  .hero { padding: 54px 0 70px; text-align: center; position: relative; overflow: hidden; }
+  .hero::before { content: ""; position: absolute; inset: 0; z-index: 0;
+    background: radial-gradient(ellipse 60% 45% at 50% 10%, rgba(232,176,75,.16), transparent 70%); }
+  .hero > * { position: relative; z-index: 1; }
+  .live-badge { display: inline-flex; align-items: center; gap: 8px; border: 1px solid #2a2c33; background: #16171b;
+    border-radius: 30px; padding: 8px 16px; font-size: 12.5px; color: #cfd1d8; margin-bottom: 28px; }
+  .live-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold-bg); box-shadow: 0 0 8px var(--gold-bg);
+    animation: pulse 1.8s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+  .hero h1 { font-size: clamp(38px, 11vw, 64px); font-weight: 800; line-height: 1.05; }
+  .hero .stat { display: block; font-size: clamp(56px, 17vw, 108px); color: var(--gold-bg); font-weight: 800; line-height: 1; margin: 6px 0; }
+  .hero .sub { margin: 26px auto 0; font-size: clamp(16px, 3vw, 18.5px); color: #b7b9c2; max-width: 480px; line-height: 1.6; }
+  .hero .cta-row { margin-top: 36px; max-width: 340px; margin-left: auto; margin-right: auto; }
+  .hero .fine { margin-top: 20px; font-size: 12.5px; color: #6f7178; letter-spacing: .04em; }
 
-  .cta-row { display: flex; flex-direction: column; gap: 12px; align-items: center; margin-top: 38px; width: 100%; max-width: 340px; }
-  .btn { display: block; width: 100%; text-align: center; text-decoration: none; padding: 16px 20px; border-radius: 14px;
-    font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 16px; letter-spacing: .02em; }
-  .btn-primary { background: linear-gradient(135deg, var(--gold), #c8862f); color: #1a1200;
-    box-shadow: 0 8px 30px -8px rgba(232,176,75,.55); }
-  .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
-  .btn-secondary:hover { border-color: var(--gold); color: var(--gold2); }
-  .scroll-hint { margin-top: 54px; font-size: 12px; color: var(--muted); letter-spacing: .1em; text-transform: uppercase;
-    animation: bob 2.2s ease-in-out infinite; }
-  @keyframes bob { 0%,100% { transform: translateY(0); opacity: .55; } 50% { transform: translateY(6px); opacity: 1; } }
+  /* ---------- generic cards / grid ---------- */
+  .grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  .card { border: 1px solid var(--line); border-radius: 18px; padding: 22px; background: #fff; }
+  .sec-dark .card { border-color: #26272d; background: #17181c; }
+  .sec-soft .card { background: #fff; }
+  .card h3 { font-size: 18px; margin-bottom: 8px; font-weight: 800; }
+  .card p { margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.6; }
+  .card .tag { display: inline-block; font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--gold); background: var(--gold-soft); border-radius: 8px; padding: 4px 9px; margin-bottom: 12px; }
 
-  /* ---------- секции ---------- */
-  section { padding: 90px 0; border-top: 1px solid var(--border); }
-  .section-title { font-size: clamp(24px, 4.5vw, 32px); text-align: center; line-height: 1.28; margin-bottom: 16px; }
-  .section-lead { text-align: center; color: var(--muted); font-size: 16px; max-width: 480px; margin: 0 auto 46px; line-height: 1.6; }
+  /* numbered step */
+  .step { display: flex; gap: 16px; align-items: flex-start; }
+  .step .num { flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; background: var(--gold-soft); color: var(--gold);
+    font-weight: 800; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+  .sec-dark .step .num { background: #26221a; color: var(--gold-bg); }
+  .step b { display: block; font-size: 16.5px; margin-bottom: 4px; }
+  .step p { margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.6; }
 
-  /* как работает */
-  .steps { display: flex; flex-direction: column; gap: 14px; }
-  .step { display: flex; gap: 16px; align-items: flex-start; border: 1px solid var(--border); background: var(--panel);
-    border-radius: 16px; padding: 20px; }
-  .step .num { font-family: 'Playfair Display', serif; font-style: italic; font-weight: 700; font-size: 26px; color: var(--gold);
-    flex-shrink: 0; width: 34px; }
-  .step b { display: block; font-size: 16px; margin-bottom: 4px; }
-  .step p { margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.55; }
+  /* format cards (Результат/Привычка/Отказ) */
+  .fmt-card { border-radius: 20px; padding: 26px; border: 1px solid var(--line); }
+  .fmt-card.gold { border-top: 4px solid var(--gold-bg); }
+  .fmt-card.teal { border-top: 4px solid var(--teal); }
+  .fmt-card.red { border-top: 4px solid var(--crimson); }
+  .fmt-card .ftitle { font-weight: 800; text-transform: uppercase; letter-spacing: .06em; font-size: 13px; margin-bottom: 8px; }
+  .fmt-card.gold .ftitle { color: var(--gold); } .fmt-card.teal .ftitle { color: var(--teal); } .fmt-card.red .ftitle { color: var(--crimson); }
+  .fmt-card h3 { font-size: 22px; margin-bottom: 10px; }
+  .fmt-card .fdesc { color: var(--muted); font-size: 15px; line-height: 1.6; margin-bottom: 16px; }
+  .fmt-card .flist { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+  .fmt-card .flist div { font-size: 14px; color: var(--ink); padding-left: 18px; position: relative; }
+  .fmt-card .flist div::before { content: "—"; position: absolute; left: 0; color: var(--muted); }
+  .fmt-card .examples { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; }
+  .fmt-card .examples b { color: var(--ink); font-weight: 700; }
 
-  /* три пути */
-  .paths { display: flex; flex-direction: column; gap: 14px; }
-  .path-card { border: 1px solid var(--border); background: linear-gradient(180deg, var(--panel), var(--panel2));
-    border-radius: 18px; padding: 24px; }
-  .path-card .ptitle { font-family: 'Oswald', sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
-    color: var(--gold2); font-size: 14px; margin-bottom: 8px; }
-  .path-card h3 { font-size: 21px; margin-bottom: 8px; }
-  .path-card .pdesc { color: var(--muted); font-size: 14.5px; line-height: 1.55; margin-bottom: 14px; }
-  .path-card .examples { font-size: 13px; color: var(--muted); border-top: 1px solid var(--border); padding-top: 12px; }
-  .path-card .examples b { color: var(--text); font-weight: 500; }
+  /* modes (public/private) comparison */
+  .modes { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  .mode-card { border-radius: 18px; padding: 24px; border: 1px solid #26272d; background: #17181c; }
+  .mode-card h3 { font-size: 19px; margin-bottom: 10px; color: #fff; }
+  .mode-card p { color: #b7b9c2; font-size: 14.5px; line-height: 1.6; margin: 0 0 12px; }
+  .mode-card .who { font-size: 13px; color: var(--gold-bg); font-weight: 700; }
 
-  /* наставники */
+  /* persona grid */
   .persona-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .persona-card { position: relative; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; aspect-ratio: 3/4; }
-  .persona-card img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(.9); }
-  .persona-card .shade { position: absolute; inset: 0; box-shadow: inset 0 -90px 60px -20px rgba(0,0,0,.92); }
-  .persona-card .pinfo { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px; }
-  .persona-card .pname { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 16px; text-shadow: 0 2px 6px rgba(0,0,0,.85); }
-  .persona-card .pline { font-size: 11.5px; color: #d8dae0; margin-top: 3px; text-shadow: 0 1px 4px rgba(0,0,0,.85); }
+  .persona-card { position: relative; border-radius: 18px; overflow: hidden; aspect-ratio: 3/4; border: 1px solid #26272d; }
+  .persona-card img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(.92); }
+  .persona-card .shade { position: absolute; inset: 0; box-shadow: inset 0 -100px 70px -20px rgba(0,0,0,.94); }
+  .persona-card .pinfo { position: absolute; left: 0; right: 0; bottom: 0; padding: 13px; }
+  .persona-card .pname { font-weight: 800; font-size: 15.5px; color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,.8); }
+  .persona-card .pline { font-size: 11.5px; color: #d8dae0; margin-top: 3px; text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+
+  /* profile mock */
+  .profile-card { border: 1px solid var(--line); border-radius: 22px; padding: 26px; max-width: 380px; margin: 0 auto; background: #fff; }
+  .profile-top { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
+  .avatar-circle { width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--gold-bg), #cc9530);
+    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; color: #1a1200; flex-shrink: 0; }
+  .profile-name { font-weight: 800; font-size: 17px; }
+  .profile-sub { font-size: 13px; color: var(--muted); }
+  .trust-row { margin-bottom: 16px; }
+  .trust-label { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; margin-bottom: 7px; }
+  .trust-bar { height: 9px; border-radius: 6px; background: var(--bg-soft); overflow: hidden; }
+  .trust-fill { height: 100%; width: 78%; background: linear-gradient(90deg, var(--gold-bg), var(--gold)); border-radius: 6px; }
+  .profile-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; text-align: center; }
+  .profile-stats div { border-top: 1px solid var(--line); padding-top: 10px; }
+  .profile-stats b { display: block; font-size: 19px; font-weight: 800; }
+  .profile-stats span { font-size: 11px; color: var(--muted); }
+
+  /* two brothers */
+  .brothers { display: flex; flex-direction: column; gap: 18px; align-items: center; text-align: center; }
+  .brothers-avatars { display: flex; gap: -10px; margin-bottom: 6px; }
+  .binitial { width: 74px; height: 74px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 26px; border: 1px solid var(--line); background: var(--bg-soft); }
+  .binitial.m { margin-right: -16px; z-index: 2; color: var(--gold); }
+  .binitial.v { color: var(--ink); }
+  .brothers blockquote { font-size: clamp(19px, 4vw, 25px); line-height: 1.5; font-weight: 700; margin: 10px 0; max-width: 620px; }
+  .brothers p.story { color: var(--muted); font-size: 15.5px; line-height: 1.7; max-width: 560px; }
+  .brothers .sign { font-size: 13.5px; color: var(--muted); font-weight: 700; }
 
   /* FAQ */
   .faq { display: flex; flex-direction: column; gap: 10px; }
-  .faq-item { border: 1px solid var(--border); background: var(--panel); border-radius: 14px; padding: 4px 20px; }
-  .faq-item summary { cursor: pointer; list-style: none; padding: 16px 26px 16px 0; font-size: 15.5px; font-weight: 600;
-    color: var(--text); position: relative; }
+  .faq-item { border: 1px solid var(--line); background: #fff; border-radius: 14px; padding: 4px 20px; }
+  .faq-item summary { cursor: pointer; list-style: none; padding: 16px 26px 16px 0; font-size: 15.5px; font-weight: 700; position: relative; }
   .faq-item summary::-webkit-details-marker { display: none; }
-  .faq-item summary::after { content: "+"; position: absolute; right: 0; top: 14px; font-family: 'Playfair Display', serif;
-    font-size: 20px; color: var(--gold); transition: transform .2s; }
+  .faq-item summary::after { content: "+"; position: absolute; right: 0; top: 13px; font-size: 20px; color: var(--gold); font-weight: 800; }
   .faq-item[open] summary::after { content: "–"; }
   .faq-item p { margin: 0 0 18px; color: var(--muted); font-size: 14.5px; line-height: 1.6; }
 
-  /* правда */
-  .truth { text-align: center; }
-  .truth blockquote { font-family: 'Playfair Display', serif; font-style: italic; font-size: clamp(20px, 4vw, 27px);
-    line-height: 1.5; margin: 0 0 20px; color: var(--text); }
-  .truth cite { display: block; font-style: normal; font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
-    color: var(--muted); }
+  /* mid CTA banner */
+  .cta-banner { text-align: center; padding: 70px 0; }
+  .cta-banner h2 { font-size: clamp(26px, 6.5vw, 42px); font-weight: 800; line-height: 1.2; margin-bottom: 26px; }
+  .cta-banner .btn { max-width: 320px; }
 
-  /* email */
-  .capture { text-align: center; }
-  #email-form { display: flex; flex-direction: column; gap: 10px; max-width: 360px; margin: 24px auto 0; }
-  #email-form input[type="email"] { padding: 14px 16px; border-radius: 12px; border: 1px solid var(--border);
-    background: var(--panel); color: var(--text); font-size: 15px; }
-  #email-note { font-size: 13px; margin-top: 12px; min-height: 18px; color: var(--muted); }
+  /* roadmap */
+  .roadmap-item { display: flex; gap: 14px; align-items: flex-start; padding: 16px 0; border-bottom: 1px solid var(--line); }
+  .roadmap-item:last-child { border-bottom: none; }
+  .roadmap-item .rtag { flex-shrink: 0; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--gold); background: var(--gold-soft); border-radius: 8px; padding: 5px 9px; margin-top: 2px; white-space: nowrap; }
+  .roadmap-item b { display: block; font-size: 15.5px; margin-bottom: 3px; }
+  .roadmap-item p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
 
-  /* финальный CTA */
+  /* final */
   .final { text-align: center; }
-  .final h2 { font-size: clamp(26px, 5.5vw, 38px); line-height: 1.2; margin-bottom: 26px; }
+  .final h2 { font-size: clamp(28px, 7vw, 46px); line-height: 1.16; margin-bottom: 28px; }
   .final .btn { max-width: 320px; margin: 0 auto; }
 
-  footer { padding: 40px 0 70px; text-align: center; font-size: 12.5px; color: var(--muted); }
-  footer a { color: var(--muted); }
+  footer { padding: 44px 0 60px; text-align: center; font-size: 12.5px; color: var(--muted); background: var(--dark); }
+  footer .wrap { color: #9a9ca6; }
+  footer a { color: #cfd1d8; text-decoration: none; }
+
+  /* ---------- desktop ---------- */
+  @media (min-width: 760px) {
+    .nav-links { display: flex; }
+    .nav-cta { display: inline-flex; }
+    .burger { display: none; }
+    .grid.cols-2 { grid-template-columns: 1fr 1fr; }
+    .grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .btn-row { flex-direction: row; }
+    .hero .cta-row { max-width: 420px; flex-direction: row; }
+    .modes { grid-template-columns: 1fr 1fr; }
+    section.sec { padding: 118px 0; }
+    .hero { padding: 70px 0 100px; }
+    .cta-banner { padding: 100px 0; }
+  }
 </style>
 </head>
 <body>
 
-  <div id="sound-toggle" onclick="toggleSound()"><span class="dot"></span><span id="sound-label">Я против Я</span></div>
-  <audio id="bgm" src="i-protiv-i.mp3" loop preload="none"></audio>
-
-  <!-- ================= HERO ================= -->
-  <section class="hero" style="border-top:none">
-    <div class="eyebrow">Сила Слова</div>
-    <h1>Здесь живёт та версия тебя,<br>которую можешь увидеть <em>только ты</em></h1>
-    <div class="sub">Дал слово на камеру. Поставил на кон то, что дорого. Дошёл — герой.
-      Слился — узнают все. Здесь не ставят цели — здесь отвечают за слово.</div>
-    <div class="tagline">Сказал. Сделал.</div>
-    <div class="cta-row">
-      <a class="btn btn-primary" href="https://t.me/Tvoya_Sila_Slova_Bot?start=landing" target="_blank" rel="noopener">Дать слово в Telegram</a>
-      <a class="btn btn-secondary" href="#capture">Узнать о запуске первым</a>
+<header>
+  <div class="nav">
+    <a class="logo" href="#top">Сила Слова</a>
+    <nav class="nav-links">
+      <a href="#how">Как это работает</a>
+      <a href="#result">Форматы</a>
+      <a href="#coaches">Наставники</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <div class="nav-right">
+      <a class="btn btn-gold nav-cta" href="https://t.me/Tvoya_Sila_Slova_Bot?start=site" target="_blank" rel="noopener" style="padding:11px 18px;font-size:14px;">Дать слово</a>
+      <button class="burger" onclick="toggleMenu()" aria-label="Меню"><span></span><span></span><span></span></button>
     </div>
-    <div class="scroll-hint">Только ты против тебя ↓</div>
-  </section>
+  </div>
+  <div class="mnav" id="mnav">
+    <a href="#how" onclick="toggleMenu()">Как это работает</a>
+    <a href="#cases" onclick="toggleMenu()">Кейсы</a>
+    <a href="#result" onclick="toggleMenu()">Форматы</a>
+    <a href="#coaches" onclick="toggleMenu()">Наставники</a>
+    <a href="#profile" onclick="toggleMenu()">Профиль</a>
+    <a href="#brothers" onclick="toggleMenu()">О нас</a>
+    <a href="#faq" onclick="toggleMenu()">FAQ</a>
+    <a href="https://t.me/Tvoya_Sila_Slova_Bot?start=site" target="_blank" rel="noopener" style="color:var(--gold)">Дать слово в Telegram →</a>
+  </div>
+</header>
 
-  <!-- ================= КОРОТКО: ЧТО ЭТО ================= -->
-  <section>
-    <div class="wrap">
-      <div class="eyebrow">Если коротко</div>
-      <h2 class="section-title">Не приложение для целей. Инструмент для ответственности</h2>
-      <p class="section-lead">Ты не «отмечаешь прогресс» — ты даёшь слово вслух, на камеру, и каждый день доказываешь, что оно чего-то стоит. Это три отличия от привычных трекеров:</p>
-      <div class="steps">
-        <div class="step"><span class="num">✓</span><div><b>Слово — не галочка</b><p>Клятва записывается на видео и живёт как факт, а не как строчка в списке дел, которую легко удалить.</p></div></div>
-        <div class="step"><span class="num">✓</span><div><b>Есть настоящая цена срыва</b><p>Кто-то узнает, что ты не сдержал слово: бот, свидетель или — если выбрал публичный режим — все в группе.</p></div></div>
-        <div class="step"><span class="num">✓</span><div><b>Рядом — наставник, а не пуш-уведомление</b><p>Персонаж с характером говорит с тобой каждый день по-настоящему, а не шлёт дежурное «не забудь позаниматься».</p></div></div>
+<!-- ================= 1. STAT HERO ================= -->
+<section class="sec sec-dark hero" id="top" style="padding-top:54px">
+  <div class="wrap">
+    <div class="live-badge"><span class="dot"></span> Сила Слова — платформа личной ответственности</div>
+    <h1>Статистически<span class="stat">+90%</span>к выполненным целям</h1>
+    <p class="sub">Столько шансов довести дело до конца получает человек, который дал слово вслух, поставил что-то на кон и знает: кто-то узнает, если он сольётся.</p>
+    <div class="cta-row btn-row">
+      <a class="btn btn-gold btn-block" href="https://t.me/Tvoya_Sila_Slova_Bot?start=site" target="_blank" rel="noopener">Дать слово в Telegram</a>
+      <a class="btn btn-outline btn-block" href="#how">Как это работает ↓</a>
+    </div>
+    <div class="fine">Без банковской карты · первая волна — бесплатно</div>
+  </div>
+</section>
+
+<!-- ================= 2. КАК ЭТО РАБОТАЕТ ================= -->
+<section class="sec" id="how">
+  <div class="wrap center">
+    <div class="eyebrow">Механика</div>
+    <h2 class="section-title">Как это работает</h2>
+    <p class="section-lead">Четыре шага — простых по отдельности, но вместе создающих то, чего не даёт ни один трекер целей: настоящую цену за срыв.</p>
+  </div>
+  <div class="wrap" style="margin-top:44px">
+    <div class="grid">
+      <div class="step reveal"><span class="num">1</span><div><b>Записываешь клятву на камеру</b><p>«Я, [имя], даю слово, что…» — вслух, не текстом. Сказанное на камеру звучит иначе, чем напечатанное в заметках, и запоминается телом, а не только головой.</p></div></div>
+      <div class="step reveal"><span class="num">2</span><div><b>Ставишь на кон то, что дорого</b><p>Пока — своё слово и репутацию. Скоро — деньги через звёзды Telegram. Всегда — что-то, что реально жалко потерять, а не абстрактную «мотивацию».</p></div></div>
+      <div class="step reveal"><span class="num">3</span><div><b>Отчитываешься каждый день</b><p>ИИ-наставник спрашивает и подталкивает, свидетель проверяет невидимые обещания. Пропуск отчёта — это не «ну ладно», а зафиксированный срыв.</p></div></div>
+      <div class="step reveal"><span class="num">4</span><div><b>Финиш — с результатом, который нельзя стереть</b><p>Дошёл — карточка с датой и статистикой навсегда доказывает, что твоё слово имеет цену. Слился — тоже узнают. Без стирания истории задним числом.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 3. ЗАЧЕМ ЭТО СОЗДАНО ================= -->
+<section class="sec sec-dark" id="why">
+  <div class="wrap center">
+    <div class="eyebrow">Зачем это существует</div>
+    <h2 class="section-title">Слово перестало что-то стоить — мы это чиним</h2>
+    <p class="section-lead">Люди не бросают цели потому, что не умеют. Они бросают, потому что цена срыва — ноль. Пообещал себе — забыл — никто не заметил. Мы убрали эту лазейку.</p>
+  </div>
+  <div class="wrap" style="margin-top:46px">
+    <div class="grid cols-3">
+      <div class="card reveal"><div class="tag">Проблема</div><h3>Обещания без последствий</h3><p>Цель в заметках можно удалить одним нажатием. Разговор с самим собой всегда можно пересмотреть в свою пользу.</p></div>
+      <div class="card reveal"><div class="tag">Причина</div><h3>Никто не узнает</h3><p>Без свидетеля мозг легко договаривается сам с собой: «начну с понедельника» превращается в бесконечный цикл.</p></div>
+      <div class="card reveal"><div class="tag">Решение</div><h3>Слово с ценой и свидетелем</h3><p>Видео-клятва, ежедневный отчёт и кто-то, кто узнает о результате — три вещи, которые возвращают слову вес.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 4. КАК ВСТРОИТЬ В ЖИЗНЬ ================= -->
+<section class="sec" id="integrate">
+  <div class="wrap center">
+    <div class="eyebrow">Внедрение</div>
+    <h2 class="section-title">Как встроить это в свою жизнь</h2>
+    <p class="section-lead">Не нужно менять весь распорядок дня. Нужно один раз честно ответить на несколько вопросов о себе.</p>
+  </div>
+  <div class="wrap" style="margin-top:44px">
+    <div class="grid cols-2">
+      <div class="card reveal"><h3>Начни с одного слова</h3><p>Не с пяти целей сразу. Выбери одно обещание, которое давно откладываешь, и доведи его до конца — остальное подтянется.</p></div>
+      <div class="card reveal"><h3>Выбери формат под задачу</h3><p>Есть дедлайн и конкретная цифра — бери «Результат». Нужна регулярность — «Привычка». Хочешь перестать что-то делать — «Отказ».</p></div>
+      <div class="card reveal"><h3>Подбери наставника под характер</h3><p>Нужна мягкость — Конфуций или Анжела. Нужен пинок — Физрук Арнольд или Баба Зина без цензуры.</p></div>
+      <div class="card reveal"><h3>Сделай отчёт ежедневным ритуалом</h3><p>Как чистка зубов — без раздумий, в одно и то же время. Именно регулярность отчёта, а не сила воли, держит слово живым.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 5. ПОЛЬЗА ИНТЕГРАЦИИ ================= -->
+<section class="sec sec-dark" id="benefits">
+  <div class="wrap center">
+    <div class="eyebrow">Что это даёт</div>
+    <h2 class="section-title">Польза, которая накапливается</h2>
+    <p class="section-lead">Не разовый рывок к одной цели, а система, которая со временем меняет то, как ты держишь слово вообще.</p>
+  </div>
+  <div class="wrap" style="margin-top:44px">
+    <div class="grid cols-2">
+      <div class="card reveal"><h3>Реальная привычка доводить дело до конца</h3><p>Каждое сдержанное слово — доказательство себе, что ты можешь. Это накапливается быстрее, чем кажется.</p></div>
+      <div class="card reveal"><h3>Внешняя ответственность без неловких просьб</h3><p>Не нужно каждый раз просить друзей «проконтролируй меня» — система и наставник делают это за тебя.</p></div>
+      <div class="card reveal"><h3>Измеримая репутация</h3><p>Уровень доверия растёт с каждым сдержанным словом — это твоя история, а не разовое ощущение мотивации.</p></div>
+      <div class="card reveal"><h3>Один инструмент вместо десяти</h3><p>Трекер привычек, будильник-напоминалка, случайный чат с другом про цели — всё в одном месте, с одной историей.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 6. КЕЙСЫ ИСПОЛЬЗОВАНИЯ ================= -->
+<section class="sec" id="cases">
+  <div class="wrap center">
+    <div class="eyebrow">Кому подходит</div>
+    <h2 class="section-title">Кейсы использования</h2>
+    <p class="section-lead">Реальные ситуации, где «просто захотеть» не сработало, а слово с ценой — сработает.</p>
+  </div>
+  <div class="wrap" style="margin-top:44px">
+    <div class="grid cols-3">
+      <div class="card reveal"><h3>Предприниматель</h3><p>«Запущу MVP до 1 марта» — с датой, точкой А и отчётами вместо бесконечного «доделаю на следующей неделе».</p></div>
+      <div class="card reveal"><h3>Спортивная привычка</h3><p>100 отжиманий каждый день, без «понедельника с нуля» — квота пропусков задаёт честные рамки жёсткости.</p></div>
+      <div class="card reveal"><h3>Отказ от привычки</h3><p>Бросить алкоголь или соцсети ночью — со свидетелем, которому не соврёшь, потому что он видит тебя каждый день.</p></div>
+      <div class="card reveal"><h3>Подготовка к экзамену</h3><p>Ежедневные часы подготовки под присмотром наставника — вместо надежды на дисциплину за неделю до сессии.</p></div>
+      <div class="card reveal"><h3>Руководитель команды</h3><p>Публичное слово по дедлайну проекта — тот же механизм, что держит спортсменов, только для рабочих обязательств.</p></div>
+      <div class="card reveal"><h3>Корпоративное благополучие</h3><p>Программа для сотрудников на доверии, а не на штрафах — подробнее в разделе «Что мы делаем дальше».</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 7. СКОЛЬКО УГОДНО КОНТРАКТОВ ================= -->
+<section class="sec sec-dark center" id="unlimited">
+  <div class="wrap">
+    <div class="eyebrow">Без ограничений</div>
+    <h2 class="section-title">Заключай с собой столько контрактов, сколько нужно</h2>
+    <p class="section-lead" style="margin:0 auto">Одно активное слово — это только начало. У каждого пользователя может быть несколько ставок одновременно: своя карточка, свой формат, свой наставник и свой срок для каждой. Прогресс по ним не путается и не мешает друг другу — «Мои ставки» показывают все активные слова сразу.</p>
+  </div>
+</section>
+
+<!-- ================= 8. КАК ДАТЬ СЛОВО ================= -->
+<section class="sec" id="give-promise">
+  <div class="wrap center">
+    <div class="eyebrow">Пошагово</div>
+    <h2 class="section-title">Как дать слово</h2>
+    <p class="section-lead">От первого сообщения боту до старта первого дня — пять минут.</p>
+  </div>
+  <div class="wrap" style="margin-top:44px">
+    <div class="grid">
+      <div class="step reveal"><span class="num">1</span><div><b>Публично или лично</b><p>Решаешь, увидят ли твоё слово люди в группе, или это останется между тобой и ботом.</p></div></div>
+      <div class="step reveal"><span class="num">2</span><div><b>Результат, Привычка или Отказ</b><p>Выбираешь формат под задачу — с примерами и подсказками на каждом шаге.</p></div></div>
+      <div class="step reveal"><span class="num">3</span><div><b>Формулируешь как обязательство</b><p>Не «хочу похудеть», а «похудею до 85 кг к 1 октября» — с цифрой и сроком, а не желанием.</p></div></div>
+      <div class="step reveal"><span class="num">4</span><div><b>Видео-клятва и точка А</b><p>Записываешь «Я даю слово, что…» на камеру и фиксируешь, где ты сейчас — фото, скрин или цифра.</p></div></div>
+      <div class="step reveal"><span class="num">5</span><div><b>Подтверждаешь и выбираешь наставника</b><p>Публичное слово в этот момент уходит в группу. Дальше — первый отчёт уже сегодня до 23:59.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 9. ПУБЛИЧНО / ЛИЧНО ================= -->
+<section class="sec sec-dark" id="modes">
+  <div class="wrap center">
+    <div class="eyebrow">Два режима</div>
+    <h2 class="section-title">Публично или лично — решаешь сам</h2>
+    <p class="section-lead">Разная цена срыва для разных задач. Не уверен — начни с личного и перейди на публичное позже.</p>
+  </div>
+  <div class="wrap" style="margin-top:44px">
+    <div class="modes">
+      <div class="mode-card reveal">
+        <div class="who">Для смелых</div>
+        <h3>Публично</h3>
+        <p>Клятва и карточка публикуются в открытой группе. Отчёты видят все — комментариями под постом. Выполняемость выше именно потому, что «пообещал себе и забыл» здесь не работает: на тебя реально смотрят.</p>
+        <p style="margin:0">Подходит для целей, которые давно пора перестать откладывать втихую.</p>
+      </div>
+      <div class="mode-card reveal">
+        <div class="who">Для начала</div>
+        <h3>Лично</h3>
+        <p>Всё видишь только ты и бот. Никто в группе не узнает о цели или о срыве. Но себе на камеру не соврёшь — клятва и ежедневный отчёт работают точно так же честно.</p>
+        <p style="margin:0">Хороший первый шаг, если публичность пока пугает больше, чем сама цель.</p>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- ================= ПОЧЕМУ ЭТО РАБОТАЕТ ================= -->
-  <section>
-    <div class="wrap">
-      <div class="eyebrow">Почему это работает</div>
-      <h2 class="section-title">Три принципа, а не мотивационные картинки</h2>
-      <p class="section-lead">Ничего эзотерического — три механизма, на которых давно строятся «commitment device»-инструменты вроде stickK, только у нас в основе не деньги, а слово и репутация.</p>
-      <div class="paths">
-        <div class="path-card">
-          <div class="ptitle">01</div>
-          <h3>Сказанное вслух держит крепче, чем подуманное</h3>
-          <div class="pdesc">Записать клятву на камеру — не то же самое, что напечатать цель в заметках. Ты слышишь свой голос — и это меняет отношение к обещанию.</div>
+<!-- ================= 10-12. ФОРМАТЫ ================= -->
+<section class="sec" id="result">
+  <div class="wrap center">
+    <div class="eyebrow">Три формата</div>
+    <h2 class="section-title">Результат, Привычка, Отказ</h2>
+    <p class="section-lead">Не одна универсальная «цель», а три разных механизма ответственности — под разные типы обещаний.</p>
+  </div>
+  <div class="wrap" style="margin-top:44px">
+    <div class="grid">
+      <div class="fmt-card gold reveal">
+        <div class="ftitle">Формат 01 · Результат</div>
+        <h3>Точка А → точка Б, к конкретному сроку</h3>
+        <p class="fdesc">Для целей с чёткой финишной чертой и датой. Формулируешь не «хочу», а «я сделаю к [дата]» — мотивацию фиксируешь сразу, чтобы вспомнить её, если станет тяжело. Отчёт не обязателен каждый день — наставник всё равно пишет ежедневно для поддержки, а итог подводится строго на финише.</p>
+        <div class="flist">
+          <div>Дедлайн задаётся числом дней или конкретной датой</div>
+          <div>Точка А фиксируется один раз и не редактируется после старта</div>
+          <div>Финальная проверка — по пруфу точки Б в срок</div>
         </div>
-        <div class="path-card">
-          <div class="ptitle">02</div>
-          <h3>Терять больнее, чем не получать</h3>
-          <div class="pdesc">Когда на кону реальная ставка — слово, репутация, позже и деньги — мозг реагирует иначе, чем на абстрактную «цель на этот год».</div>
+        <div class="examples"><b>Похудеть на 8 кг</b> · Накопить 300 000 ₽ · Пробежать 10 км · Выучить английский до B1 · Прочитать 12 книг</div>
+      </div>
+      <div class="fmt-card teal reveal" id="habit">
+        <div class="ftitle">Формат 02 · Привычка</div>
+        <h3>Регулярность минимум 21 день</h3>
+        <p class="fdesc">Для действий, которые нужно делать снова и снова, а не один раз. Сам выбираешь степень жёсткости — от «можно оступиться» до «ни одного пропуска за весь срок». Пропуск сверх квоты = слово не сдержано в этот раз, без исключений задним числом.</p>
+        <div class="flist">
+          <div><b>Лайт</b> — до 2 пропусков в неделю</div>
+          <div><b>Нормис</b> — 1 пропуск в месяц</div>
+          <div><b>Лучшая Версия Себя</b> — ни одного пропуска за весь срок</div>
         </div>
-        <div class="path-card">
-          <div class="ptitle">03</div>
-          <h3>Свидетель меняет всё</h3>
-          <div class="pdesc">Когда кто-то — бот, свидетель, вся группа — реально узнает о результате, шанс довести дело до конца заметно выше, чем «наедине с собой».</div>
+        <div class="examples"><b>100 отжиманий в день</b> · 10 000 шагов · Читать 20 минут · Ложиться до 23:00 · Медитировать каждое утро</div>
+      </div>
+      <div class="fmt-card red reveal" id="quit">
+        <div class="ftitle">Формат 03 · Отказ</div>
+        <h3>Не делать что-то — с проверкой свидетелем</h3>
+        <p class="fdesc">Единственный формат, где результат снаружи не виден, поэтому нужен свидетель — человек, которому доверяешь. Раз в неделю бот спрашивает у него, всё ли в порядке, а в конце срока свидетель выносит финальный вердикт: держался ты или сорвался.</p>
+        <div class="flist">
+          <div>Минимальный срок — 30 дней, это процесс на месяцы, а не на неделю</div>
+          <div>Свидетель подтверждается по ссылке-приглашению в Telegram</div>
+          <div>Финальный вердикт нельзя оспорить задним числом</div>
         </div>
+        <div class="examples"><b>Без алкоголя</b> · Без сигарет · Без сладкого · Без соцсетей после 22:00 · Без импульсивных покупок</div>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- ================= КАК ЭТО РАБОТАЕТ ================= -->
-  <section>
-    <div class="wrap">
-      <div class="eyebrow">Механика</div>
-      <h2 class="section-title">Четыре шага — и назад пути нет</h2>
-      <p class="section-lead">Люди не достигают целей не потому, что не знают как. А потому, что за слив ничего не будет. Мы это чиним.</p>
-      <div class="steps">
-        <div class="step"><span class="num">1</span><div><b>Записываешь клятву</b><p>«Я, [имя], даю слово, что…» — на камеру, вслух. Сказать — не то же самое, что напечатать. Себе на камеру не соврёшь.</p></div></div>
-        <div class="step"><span class="num">2</span><div><b>Ставишь на кон</b><p>Своё слово — как минимум. При желании — звёзды Telegram. На кону должно быть что-то, что реально жалко потерять.</p></div></div>
-        <div class="step"><span class="num">3</span><div><b>Идёшь с наставником</b><p>Персонаж — строгий или тёплый, выбираешь сам — держит тебя в курсе каждый день, пока ты держишь слово.</p></div></div>
-        <div class="step"><span class="num">4</span><div><b>Финиш — публично</b><p>Дошёл — статистика скажет, что ты в 1% тех, для кого слово имеет цену. Слился — тоже узнают. Без розовых соплей.</p></div></div>
+<!-- ================= 13. ИИ-НАСТАВНИКИ ================= -->
+<section class="sec sec-dark" id="coaches">
+  <div class="wrap center">
+    <div class="eyebrow">Сопровождение</div>
+    <h2 class="section-title">Твои ИИ-наставники</h2>
+    <p class="section-lead">Тебя держит не безликий пуш «не забудь». Тебя держит персонаж с характером, который говорит с тобой каждый день — и его можно сменить в любой момент под каждую ставку отдельно.</p>
+  </div>
+  <div class="wrap" style="margin-top:44px">
+    <div class="persona-grid">
+      <div class="persona-card reveal"><img src="../confucius.jpg" alt="Конфуций" loading="lazy"><div class="shade"></div>
+        <div class="pinfo"><div class="pname">Конфуций</div><div class="pline">Мудрец. Метафоры клинка и воды, спокоен, но не даст соврать себе.</div></div></div>
+      <div class="persona-card reveal"><img src="../coach.jpg" alt="Физрук Арнольд" loading="lazy"><div class="shade"></div>
+        <div class="pinfo"><div class="pname">Физрук Арнольд</div><div class="pline">Прямой, качок с района. За базар отвечают — без исключений.</div></div></div>
+      <div class="persona-card reveal"><img src="../angela_fox.jpg" alt="Анжела Фокс" loading="lazy"><div class="shade"></div>
+        <div class="pinfo"><div class="pname">Анжела Фокс</div><div class="pline">Любит по-настоящему — глубоко и заботливо, поэтому не отстанет.</div></div></div>
+      <div class="persona-card reveal"><img src="../baba_zina.jpg" alt="Баба Зина" loading="lazy"><div class="shade"></div>
+        <div class="pinfo"><div class="pname">Баба Зина 🔞</div><div class="pline">Без цензуры, сарказм и жёсткая правда. Только для тех, кто осознанно выбрал.</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 14. ПРОФИЛЬ ================= -->
+<section class="sec" id="profile">
+  <div class="wrap center">
+    <div class="eyebrow">Твоя история</div>
+    <h2 class="section-title">Твой профиль</h2>
+    <p class="section-lead">Не просто аккаунт — репутация, которая строится словом за словом.</p>
+  </div>
+  <div class="wrap" style="margin-top:44px">
+    <div class="profile-card reveal">
+      <div class="profile-top">
+        <div class="avatar-circle">Т</div>
+        <div><div class="profile-name">Твоё имя</div><div class="profile-sub">Фото синхронизируется из Telegram</div></div>
+      </div>
+      <div class="trust-row">
+        <div class="trust-label"><span>Уровень доверия</span><span>78 / 100</span></div>
+        <div class="trust-bar"><div class="trust-fill"></div></div>
+      </div>
+      <div class="profile-stats">
+        <div><b>12</b><span>слов сдержано</span></div>
+        <div><b>3</b><span>активных ставки</span></div>
+        <div><b>7</b><span>очков свидетеля</span></div>
       </div>
     </div>
-  </section>
-
-  <!-- ================= ТРИ ПУТИ ================= -->
-  <section>
-    <div class="wrap">
-      <div class="eyebrow">Три формата</div>
-      <h2 class="section-title">Выбери, за что отвечаешь</h2>
-      <p class="section-lead">Не абстрактная «цель». Конкретное обязательство с датой, привычка с жёсткими правилами или отказ, который проверит кто-то, кроме тебя.</p>
-      <div class="paths">
-        <div class="path-card">
-          <div class="ptitle">Результат</div>
-          <h3>Точка А → точка Б, к сроку</h3>
-          <div class="pdesc">Не «хочу», а «я сделаю к [дата]». Мотивация зафиксирована с самого начала — вспомнишь, если станет тяжело.</div>
-          <div class="examples"><b>Похудеть на 8 кг</b> · Накопить 300 000 ₽ · Пробежать 10 км · Выучить английский до B1</div>
-        </div>
-        <div class="path-card">
-          <div class="ptitle">Привычка</div>
-          <h3>Не отходить от курса — ни разу или почти</h3>
-          <div class="pdesc">Минимум 21 день. Выбираешь степень жёсткости — от «можно оступиться» до «Лучшая Версия Себя», где нет права на пропуск.</div>
-          <div class="examples"><b>100 отжиманий в день</b> · Читать 20 минут · Ложиться до 23:00 · Медитировать каждое утро</div>
-        </div>
-        <div class="path-card">
-          <div class="ptitle">Отказ</div>
-          <h3>Заявляешь намерение — свидетель проверяет</h3>
-          <div class="pdesc">Месяцы, не дни. Снаружи не видно, поэтому нужен тот, кто видит тебя каждый день и не соврёт за тебя в конце.</div>
-          <div class="examples"><b>Без алкоголя</b> · Без соцсетей после 22:00 · Без импульсивных покупок · Без сладкого</div>
-        </div>
-      </div>
+  </div>
+  <div class="wrap" style="margin-top:36px">
+    <div class="grid cols-2">
+      <div class="card reveal"><h3>Аватар и имя</h3><p>Подтягивается из Telegram автоматически, либо ставишь своё фото — оно больше никогда не перезапишется автоматически.</p></div>
+      <div class="card reveal"><h3>История ставок</h3><p>Все сдержанные и не сдержанные слова остаются в профиле — это не скрывается и не сбрасывается.</p></div>
+      <div class="card reveal"><h3>Очки свидетеля</h3><p>Растут каждый раз, когда ты честно подтверждаешь или опровергаешь чужой отказ — репутация проверяющего тоже что-то значит.</p></div>
+      <div class="card reveal"><h3>Реферальная сеть</h3><p>Приглашаешь людей, которым доверяешь — и получаешь +5 к доверию, когда приглашённый впервые сдержит своё первое слово.</p></div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- ================= ЧАСТЫЕ ВОПРОСЫ ================= -->
-  <section>
-    <div class="wrap">
-      <div class="eyebrow">Прежде чем начать</div>
-      <h2 class="section-title">Вопросы, которые обычно возникают первыми</h2>
-      <p class="section-lead">Коротко и без воды — остальное можно спросить в Поддержке прямо в боте.</p>
-      <div class="faq">
-        <details class="faq-item">
-          <summary>Это бесплатно?</summary>
-          <p>Да. Сейчас — первая волна, без денег: ставишь слово, а не деньги. Ставки звёздами Telegram появятся позже, и это будет твой выбор, а не обязаловка.</p>
-        </details>
-        <details class="faq-item">
-          <summary>Что если случится настоящий форс-мажор?</summary>
-          <p>Пишешь в Поддержку в течение 24 часов после срыва — разбираем по-человечески, живыми людьми, а не автоматическим отказом.</p>
-        </details>
-        <details class="faq-item">
-          <summary>Это марафон или курс с продажами?</summary>
-          <p>Нет. Ни диплома, ни курса, ни воронки допродаж. Один инструмент: ты дал слово — бот и, по желанию, люди вокруг следят, сдержал ты его или нет.</p>
-        </details>
-        <details class="faq-item">
-          <summary>В публичном режиме точно кто-то увидит?</summary>
-          <p>Да, пост уходит в открытую группу Telegram, и отчёты видны всем. Именно это поднимает выполняемость — привычное «пообещал себе и забыл» здесь не проходит. Не готов — есть личный режим, где всё видишь только ты и бот.</p>
-        </details>
-        <details class="faq-item">
-          <summary>Как проверяется «Отказ», если снаружи не видно?</summary>
-          <p>Через свидетеля — человека, которому доверяешь. Раз в неделю бот спрашивает у него, всё ли в порядке, а в конце срока свидетель выносит финальный вердикт.</p>
-        </details>
-        <details class="faq-item">
-          <summary>Кто видит мои данные?</summary>
-          <p>В личном режиме — только ты и бот. В публичном — то, что ты сам публикуешь: клятва и ежедневные отчёты, и ничего больше.</p>
-        </details>
-      </div>
+<!-- ================= 15. ГЕЙМИФИКАЦИЯ ================= -->
+<section class="sec sec-dark" id="gamification">
+  <div class="wrap center">
+    <div class="eyebrow">Что растёт со временем</div>
+    <h2 class="section-title">Геймификация, рейтинги, партнёрства</h2>
+    <p class="section-lead">Уровень доверия — это не косметика. Это цифра, которая со временем станет что-то значить за пределами самого приложения.</p>
+  </div>
+  <div class="wrap" style="margin-top:44px">
+    <div class="grid cols-2">
+      <div class="card reveal"><h3>Уровень доверия</h3><p>Растёт с каждым сдержанным словом и падает не сам по себе — это накопительная репутация, а не очки за активность.</p></div>
+      <div class="card reveal"><h3>Очки свидетеля</h3><p>Отдельная репутация за честность в роли проверяющего чужих обещаний — быть хорошим свидетелем тоже статус.</p></div>
+      <div class="card reveal"><h3>Реферальные бонусы</h3><p>Приглашаешь тех, кто реально держит слово — получаешь доверие не за само приглашение, а за качество тех, кого привёл.</p></div>
+      <div class="card reveal"><h3>Публичный рейтинг — скоро</h3><p>Открытый лидерборд по уровню доверия внутри группы и, позже, между городами и сообществами.</p></div>
+      <div class="card reveal"><h3>Партнёрства — скоро</h3><p>Высокий уровень доверия открывает предложения от партнёров: скидки, привилегии, доступ к закрытым форматам.</p></div>
+      <div class="card reveal"><h3>Бейджи за форматы — скоро</h3><p>Отдельные знаки за дисциплину в «Привычке», выдержку в «Отказе» и точность в «Результате».</p></div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- ================= НАСТАВНИКИ ================= -->
-  <section>
-    <div class="wrap">
-      <div class="eyebrow">Сопровождение</div>
-      <h2 class="section-title">Тебя держит не приложение — тебя держит наставник</h2>
-      <p class="section-lead">Выбираешь, каким тоном с тобой говорят каждый день: мудростью, силой, любовью — или без цензуры.</p>
-      <div class="persona-grid">
-        <div class="persona-card"><img src="../confucius.jpg" alt="Конфуций" loading="lazy"><div class="shade"></div>
-          <div class="pinfo"><div class="pname">Конфуций</div><div class="pline">Мудрец. Спокоен, но не даст соврать себе.</div></div></div>
-        <div class="persona-card"><img src="../coach.jpg" alt="Физрук Арнольд" loading="lazy"><div class="shade"></div>
-          <div class="pinfo"><div class="pname">Физрук Арнольд</div><div class="pline">Прямой. За базар отвечают.</div></div></div>
-        <div class="persona-card"><img src="../angela_fox.jpg" alt="Анжела Фокс" loading="lazy"><div class="shade"></div>
-          <div class="pinfo"><div class="pname">Анжела Фокс</div><div class="pline">Любит по-настоящему — и поэтому не отстанет.</div></div></div>
-        <div class="persona-card"><img src="../baba_zina.jpg" alt="Баба Зина" loading="lazy"><div class="shade"></div>
-          <div class="pinfo"><div class="pname">Баба Зина 🔞</div><div class="pline">Без цензуры. Только для тех, кто осознанно выбрал.</div></div></div>
-      </div>
+<!-- ================= 16. ДВА БРАТА ================= -->
+<section class="sec" id="brothers">
+  <div class="wrap brothers">
+    <div class="eyebrow">Кто это делает</div>
+    <div class="brothers-avatars">
+      <div class="binitial m">М</div>
+      <div class="binitial v">В</div>
     </div>
-  </section>
+    <blockquote>«Мы оба слишком много раз слышали — и произносили сами — обещания, которые ничего не стоили.»</blockquote>
+    <p class="story">Сила Слова — проект двух братьев, Максима и Вадима. Всё началось с более простой идеи — платформы под названием <b>АнтиБалабол</b>: попытки сделать так, чтобы слова, брошенные на ветер, переставали быть бесплатными. Чем дольше мы наблюдали за собой и за людьми вокруг, тем яснее становилось — проблема не в целях и не в мотивации, а в том, что за пустое слово нет цены. Сила Слова — это развитие той же идеи: с ИИ-наставниками, свидетелями, уровнем доверия и форматами под любое обещание, но с тем же корнем — если сказал, будь добр ответить.</p>
+    <p class="sign">— Максим и Вадим, основатели</p>
+  </div>
+</section>
 
-  <!-- ================= ПРАВДА ================= -->
-  <section class="truth">
-    <div class="wrap">
-      <blockquote>«Ты не сорвался. Ты просто ещё ни разу не давал слово по-настоящему.»</blockquote>
-      <cite>Сила Слова</cite>
+<!-- ================= 17. FAQ ================= -->
+<section class="sec sec-soft" id="faq">
+  <div class="wrap center">
+    <div class="eyebrow">Прежде чем начать</div>
+    <h2 class="section-title">Частые вопросы</h2>
+    <p class="section-lead">Коротко и без воды — остальное можно спросить в Поддержке прямо в боте.</p>
+  </div>
+  <div class="wrap" style="margin-top:40px">
+    <div class="faq">
+      <details class="faq-item"><summary>Это бесплатно?</summary><p>Да. Сейчас — первая волна, без денег: ставишь слово, а не деньги. Ставки звёздами Telegram появятся позже, и это будет твой выбор, а не обязаловка.</p></details>
+      <details class="faq-item"><summary>Что если случится настоящий форс-мажор?</summary><p>Пишешь в Поддержку в течение 24 часов после срыва — разбираем по-человечески, живыми людьми, а не автоматическим отказом.</p></details>
+      <details class="faq-item"><summary>Как вы боретесь с накрученными пруфами?</summary><p>Сейчас — здравым смыслом и живой модерацией на спорных финалах. В разработке — более строгие методы верификации, подробнее в разделе «Что мы делаем дальше».</p></details>
+      <details class="faq-item"><summary>Это марафон или курс с продажами?</summary><p>Нет. Ни диплома, ни курса, ни воронки допродаж. Один инструмент: ты дал слово — бот и, по желанию, люди вокруг следят, сдержал ты его или нет.</p></details>
+      <details class="faq-item"><summary>В публичном режиме точно кто-то увидит?</summary><p>Да, пост уходит в открытую группу Telegram, и отчёты видны всем. Не готов — есть личный режим, где всё видишь только ты и бот.</p></details>
+      <details class="faq-item"><summary>Как проверяется «Отказ», если снаружи не видно?</summary><p>Через свидетеля — человека, которому доверяешь. Раз в неделю бот спрашивает у него, всё ли в порядке, а в конце срока свидетель выносит финальный вердикт.</p></details>
+      <details class="faq-item"><summary>Будут ли интеграции с другими приложениями?</summary><p>Да, это в разработке — синхронизация с фитнес- и продуктивность-приложениями, чтобы часть пруфов подтверждалась автоматически.</p></details>
+      <details class="faq-item"><summary>Есть корпоративная версия?</summary><p>Она в работе — для компаний, которые хотят построить культуру ответственности на доверии, а не на штрафах. Подробнее скоро.</p></details>
+      <details class="faq-item"><summary>Кто видит мои данные?</summary><p>В личном режиме — только ты и бот. В публичном — то, что ты сам публикуешь: клятва и ежедневные отчёты, и ничего больше.</p></details>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- ================= EMAIL CAPTURE ================= -->
-  <section id="capture" class="capture">
-    <div class="wrap">
-      <div class="eyebrow">Не готов прямо сейчас</div>
-      <h2 class="section-title">Оставь почту — сообщим о публичном запуске</h2>
-      <p class="section-lead">Без спама. Одно письмо, когда откроется широкий доступ и появятся новые механики.</p>
-      <form id="email-form" onsubmit="return submitEmail(event)">
-        <input type="email" id="email-input" placeholder="твой@email.ru" required>
-        <button class="btn btn-primary" type="submit">Оставить почту</button>
-      </form>
-      <div id="email-note"></div>
-    </div>
-  </section>
+<!-- ================= 18. MID CTA ================= -->
+<section class="sec sec-dark cta-banner">
+  <div class="wrap">
+    <h2>Сдержи своё слово —<br>или потеряй <strong class="hl-red">свои деньги</strong>.</h2>
+    <a class="btn btn-gold" href="https://t.me/Tvoya_Sila_Slova_Bot?start=site" target="_blank" rel="noopener">Дать слово в Telegram</a>
+    <p class="muted" style="margin-top:18px;font-size:13px">Сейчас на кону слово. Денежные ставки — следующая волна.</p>
+  </div>
+</section>
 
-  <!-- ================= ФИНАЛ ================= -->
-  <section class="final">
-    <div class="wrap">
-      <div class="eyebrow">Решай сейчас</div>
-      <h2>Только ты <em style="font-family:'Playfair Display',serif;font-style:italic;color:var(--gold2)">против</em> тебя.<br>Слово либо стоит чего-то, либо нет.</h2>
-      <a class="btn btn-primary" href="https://t.me/Tvoya_Sila_Slova_Bot?start=landing" target="_blank" rel="noopener">Дать слово в Telegram</a>
-    </div>
-  </section>
+<!-- ================= 19. ЧТО ДАЛЬШЕ ================= -->
+<section class="sec" id="roadmap">
+  <div class="wrap center">
+    <div class="eyebrow">В разработке</div>
+    <h2 class="section-title">Что мы делаем сейчас и что скоро выйдет</h2>
+    <p class="section-lead">Сила Слова растёт быстро — вот честный список того, над чем мы работаем прямо сейчас.</p>
+  </div>
+  <div class="wrap" style="margin-top:40px">
+    <div class="roadmap-item reveal"><div class="rtag">Верификация</div><div><b>Новые методы подтверждения прогресса</b><p>Более строгие пруфы, которые сложнее подделать: таймстемпы, видео-подтверждение, геолокация для отдельных типов целей.</p></div></div>
+    <div class="roadmap-item reveal"><div class="rtag">Геймификация</div><div><b>Публичные рейтинги и очки</b><p>Открытые лидерборды по уровню доверия и достижениям — соревновательность вместо одиночества в цели.</p></div></div>
+    <div class="roadmap-item reveal"><div class="rtag">Бизнес</div><div><b>Корпоративные интеграции и решения</b><p>White-label версии для компаний, HR и wellness-программ — культура ответственности на уровне команды.</p></div></div>
+    <div class="roadmap-item reveal"><div class="rtag">Синхронизация</div><div><b>Связь с другими приложениями</b><p>Apple Health, Google Fit, Strava и другие — автоматическое подтверждение части отчётов без ручного пруфа.</p></div></div>
+    <div class="roadmap-item reveal"><div class="rtag">Гибкость</div><div><b>Больше уровней жёсткости и стиля наставника</b><p>Тоньше настраиваемая строгость, частота сообщений и тон общения — под любой характер.</p></div></div>
+    <div class="roadmap-item reveal"><div class="rtag">Продуктивность</div><div><b>Механики продуктивности внутри бота</b><p>Стрики, фокус-сессии и ежедневное планирование — не только отчёт, но и сам процесс работы над словом.</p></div></div>
+    <div class="roadmap-item reveal"><div class="rtag">Соцфункции</div><div><b>Друзья, команды, групповые челленджи</b><p>Совместные обязательства с друзьями или коллегами — держать слово вместе тяжелее слиться поодиночке.</p></div></div>
+  </div>
+</section>
 
-  <footer>
-    <div class="wrap">Сила Слова · слово имеет цену<br><a href="https://t.me/Tvoya_Sila_Slova_Bot" target="_blank" rel="noopener">@Tvoya_Sila_Slova_Bot</a></div>
-  </footer>
+<!-- ================= 20. START NOW ================= -->
+<section class="sec sec-dark final">
+  <div class="wrap">
+    <div class="eyebrow">Решай сейчас</div>
+    <h2>Только ты <strong class="hl">против</strong> тебя.<br>Слово либо стоит чего-то, либо нет.</h2>
+    <a class="btn btn-gold" href="https://t.me/Tvoya_Sila_Slova_Bot?start=site" target="_blank" rel="noopener">Начать — дать слово в Telegram</a>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">Сила Слова · слово имеет цену<br><a href="https://t.me/Tvoya_Sila_Slova_Bot" target="_blank" rel="noopener">@Tvoya_Sila_Slova_Bot</a></div>
+</footer>
 
 <script>
-  // ---------- тихий фоновый саундтрек «Я против Я» ----------
-  // Файл i-protiv-i.mp3 нужно положить рядом с этой страницей (в папку landing/) —
-  // сам по себе трек этим кодом не создаётся. Громкость намеренно низкая (фон, не хук).
-  // Автовоспроизведение со звуком браузеры блокируют без клика — поэтому это переключатель,
-  // а не автозапуск.
-  const bgm = document.getElementById("bgm");
-  const toggle = document.getElementById("sound-toggle");
-  const label = document.getElementById("sound-label");
-  bgm.volume = 0.14;
-  let playing = false;
-  function toggleSound() {
-    if (!playing) {
-      bgm.play().then(function () {
-        playing = true;
-        toggle.classList.add("playing");
-        label.textContent = "Я против Я — играет";
-      }).catch(function () {
-        label.textContent = "Трек скоро";
-      });
-    } else {
-      bgm.pause();
-      playing = false;
-      toggle.classList.remove("playing");
-      label.textContent = "Я против Я";
-    }
-  }
-  window.toggleSound = toggleSound;
-
-  // ---------- email capture ----------
-  // Без бэкенда на этой странице — форма шлёт на Formspree (бесплатно, 2 минуты настройки:
-  // создать форму на formspree.io и вставить свой endpoint вместо YOUR_FORM_ID ниже).
-  // До замены endpoint форма покажет мягкую ошибку и не потеряет данные молча.
-  function submitEmail(e) {
-    e.preventDefault();
-    const email = document.getElementById("email-input").value;
-    const note = document.getElementById("email-note");
-    note.style.color = "var(--muted)";
-    note.textContent = "Отправляю…";
-    fetch("https://formspree.io/f/YOUR_FORM_ID", {
-      method: "POST",
-      headers: { "Accept": "application/json", "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email, source: "landing" }),
-    }).then(function (r) {
-      if (r.ok) {
-        note.style.color = "var(--gold2)";
-        note.textContent = "Готово — напишем, как только откроется доступ.";
-        document.getElementById("email-form").reset();
-      } else {
-        note.style.color = "#ff6b6b";
-        note.textContent = "Форма ещё не настроена — напиши нам в Telegram напрямую.";
-      }
-    }).catch(function () {
-      note.style.color = "#ff6b6b";
-      note.textContent = "Форма ещё не настроена — напиши нам в Telegram напрямую.";
-    });
-    return false;
-  }
-  window.submitEmail = submitEmail;
+  function toggleMenu() { document.getElementById('mnav').classList.toggle('open'); }
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, { threshold: .12, rootMargin: '0px 0px -60px 0px' });
+  document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
 </script>
 </body>
 </html>
