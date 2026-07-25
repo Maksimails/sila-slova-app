@@ -125,6 +125,15 @@
   .fmt-card .flist div::before { content: "—"; position: absolute; left: 0; color: var(--muted); }
   .fmt-card .examples { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; }
   .fmt-card .examples b { color: var(--ink); font-weight: 700; }
+  .fmt-card.violet { border-top: 4px solid #7a5ac8; }
+  .fmt-card.blue { border-top: 4px solid #2f7dc0; }
+  .fmt-card.violet .ftitle { color: #7a5ac8; }
+  .fmt-card.blue .ftitle { color: #2f7dc0; }
+
+  /* отзывы */
+  .review-card { border: 1px solid var(--line); border-radius: 18px; padding: 24px; background: #fff; }
+  .review-card p { margin: 0 0 14px; color: var(--ink); font-size: 14.5px; line-height: 1.65; }
+  .review-card .who { font-size: 13.5px; font-weight: 800; color: var(--gold); }
 
   /* modes (public/private) comparison */
   .modes { display: grid; grid-template-columns: 1fr; gap: 14px; }
@@ -226,6 +235,7 @@
       <a href="#result">Форматы</a>
       <a href="#challenge">Вызов</a>
       <a href="#coaches">Наставники</a>
+      <a href="#reviews">Отзывы</a>
       <a href="#faq">FAQ</a>
     </nav>
     <div class="nav-right">
@@ -240,6 +250,7 @@
     <a href="#challenge" onclick="toggleMenu()">Вызов</a>
     <a href="#coaches" onclick="toggleMenu()">Наставники</a>
     <a href="#profile" onclick="toggleMenu()">Профиль</a>
+    <a href="#reviews" onclick="toggleMenu()">Отзывы</a>
     <a href="#brothers" onclick="toggleMenu()">О нас</a>
     <a href="#faq" onclick="toggleMenu()">FAQ</a>
     <a href="https://t.me/Tvoya_Sila_Slova_Bot?start=site" target="_blank" rel="noopener" style="color:var(--gold)">Дать слово в Telegram →</a>
@@ -400,6 +411,42 @@
   </div>
 </section>
 
+<!-- ================= NEW. ВЫЗОВ — ГРУППЫ (в разработке) ================= -->
+<section class="sec" id="challenge-groups">
+  <div class="wrap center">
+    <div class="eyebrow">Куда движется Вызов</div>
+    <h2 class="section-title">Не только 1 на 1</h2>
+    <p class="section-lead">Сейчас можно вызвать конкретного человека — это уже работает. В разработке — закрытые группы своих и открытые вызовы, к которым может присоединиться кто угодно.</p>
+  </div>
+  <div class="wrap" style="margin-top:44px">
+    <div class="grid cols-2">
+      <div class="fmt-card violet reveal">
+        <div class="ftitle">Скоро · Закрытая группа</div>
+        <h3>Свои — по приглашению, никого лишнего</h3>
+        <p class="fdesc">Тот же Вызов, только участников больше одного, и все — те, кого позвал именно ты. Условия одни на всех, но отчёт, наставник и ставка — у каждого свои. Видно только внутри группы.</p>
+        <div class="flist">
+          <div><b>Отдел продаж</b> — общая квота звонков или встреч на неделю, руководителю сразу видно, кто выполняет, а кто сливается</div>
+          <div><b>Друзья или партнёры по залу</b> — моржевание, зарядка или пробежка каждое утро: вместе сорваться сложнее</div>
+          <div><b>Кружок по медитации или чтению</b> — ежедневная практика с отчётом перед своими, а не перед всем интернетом</div>
+        </div>
+        <div class="examples"><b>Для кого:</b> команды, друзья, тесные компании, которые уже доверяют друг другу.</div>
+      </div>
+      <div class="fmt-card blue reveal">
+        <div class="ftitle">Скоро · Открытая группа</div>
+        <h3>Публично — присоединиться может кто угодно</h3>
+        <p class="fdesc">Ставишь цель, срок и правила — по ссылке подключается любой желающий. Общий рейтинг: кто ещё держится, кто уже слился, видно всем участникам сразу.</p>
+        <div class="flist">
+          <div><b>Тренер или блогер</b> запускает 30-дневный челлендж для своей аудитории — с общим рейтингом участников</div>
+          <div><b>«Год без сахара» или «Трезвый январь»</b> — открытый вызов, к которому присоединяются незнакомые люди с одной целью</div>
+          <div><b>Языковой марафон комьюнити</b> — учите вместе, отчитываетесь перед всеми участниками разом</div>
+        </div>
+        <div class="examples"><b>Для кого:</b> комьюнити-лидеры, блогеры — все, кому важно публичное давление и общий рейтинг.</div>
+      </div>
+    </div>
+    <p class="muted center" style="text-align:center;margin-top:24px;font-size:13px">Обе версии — в разработке. Прямо сейчас доступен Вызов 1 на 1 (выше).</p>
+  </div>
+</section>
+
 <!-- ================= 13. ИИ-НАСТАВНИКИ ================= -->
 <section class="sec sec-dark" id="coaches">
   <div class="wrap center">
@@ -470,6 +517,23 @@
   </div>
 </section>
 
+<!-- ================= NEW. ОТЗЫВЫ ================= -->
+<section class="sec sec-soft" id="reviews">
+  <div class="wrap center">
+    <div class="eyebrow">Что говорят</div>
+    <h2 class="section-title">Отзывы тех, кто уже держит слово</h2>
+    <p class="section-lead">Реальные истории — как слово с ценой меняет привычки, бизнес и отношения.</p>
+  </div>
+  <div class="wrap" style="margin-top:44px">
+    <div class="grid cols-2">
+      <div class="review-card reveal"><p>«Мне нравится это приложение — у меня в команде теперь все им пользуются, между собой называем его «АнтиБолтун» (по-нашему, по-простому). Всё, что связано с работой и было кем-то обещано, — сразу ставим на АнтиБолтун и делаем публичное обещание. Продуктивность растёт месяц от месяца — открываем всё новые способы делать то, что сказали.»</p><div class="who">Александр К.</div></div>
+      <div class="review-card reveal"><p>«Все мои новые ученицы по йоге теперь пользуются этим приложением — они знают, что придётся вернуться, и это же им на пользу: возврат постоянных клиенток почти 100%. Рекомендую всем владельцам малого бизнеса.»</p><div class="who">Лариса</div></div>
+      <div class="review-card reveal"><p>«Обожаю приложение — так просто, но реально работает! Забавный момент: даже мой папа теперь им пользуется — они с друзьями поспорили по пьяни, и теперь каждую неделю ходят на рыбалку, хаха.»</p><div class="who">Starseed</div></div>
+      <div class="review-card reveal"><p>«Друзья заставили меня попробовать — так я дал первое слово самому себе. Сейчас у меня постоянно 4-5 активных ставок. Не думал, что ответственность может быть такой простой штукой — ни разу не пропустил дедлайн или обещание. 10 из 10, рекомендую всем, особенно с СДВГ, как у меня.»</p><div class="who">Денис</div></div>
+    </div>
+  </div>
+</section>
+
 <!-- ================= 16. ДВА БРАТА ================= -->
 <section class="sec" id="brothers">
   <div class="wrap brothers">
@@ -524,7 +588,6 @@
   <div class="wrap" style="margin-top:40px">
     <div class="roadmap-item reveal"><div class="rtag">Верификация</div><div><b>Более строгие пруфы</b><p>Таймстемпы, видео-подтверждение и геолокация — сложнее подделать отчёт.</p></div></div>
     <div class="roadmap-item reveal"><div class="rtag">Геймификация</div><div><b>Публичные рейтинги и бейджи</b><p>Лидерборды по уровню доверия и знаки отличия за дисциплину в каждом формате.</p></div></div>
-    <div class="roadmap-item reveal"><div class="rtag">Соцфункции</div><div><b>Вызов — команды и группы</b><p>Расширяем 1 на 1 до командных и групповых версий Вызова.</p></div></div>
     <div class="roadmap-item reveal"><div class="rtag">Синхронизация</div><div><b>Связь с другими приложениями</b><p>Apple Health, Google Fit, Strava — автоматическое подтверждение части отчётов.</p></div></div>
     <div class="roadmap-item reveal"><div class="rtag">Бизнес</div><div><b>Корпоративные решения</b><p>White-label версии для компаний и HR-команд — культура ответственности без штрафов.</p></div></div>
     <div class="roadmap-item reveal"><div class="rtag">Оплата</div><div><b>Оплата картой</b><p>В дополнение к Stars — для тех, кто хочет ставить деньги напрямую.</p></div></div>
