@@ -126,7 +126,9 @@
   const PERSONAS = { confucius: "Конфуций", arnold: "Физрук Арнольд", zina: "Баба Зина 🔞", angela: "Анжела Фокс" };
   // финальные портреты персонажей — те же файлы, что лежат в папке "Character Visuals",
   // залиты в этот же репозиторий на GitHub Pages рядом с index.html
-  const PERSONA_IMG = { confucius: "confucius.jpg", arnold: "coach.jpg", zina: "baba_zina.jpg", angela: "angela_fox.jpg" };
+  // изображения лежат в корне репозитория GitHub Pages, а этот файл — в /miniapp/,
+  // поэтому путь на уровень выше (без этого префикса картинки просто 404 и не показываются)
+  const PERSONA_IMG = { confucius: "../confucius.jpg", arnold: "../coach.jpg", zina: "../baba_zina.jpg", angela: "../angela_fox.jpg" };
   const PERSONA_FONT = { confucius: "name-confucius", arnold: "name-arnold", zina: "name-zina", angela: "name-angela" };
 
   // ---------- Мастер ставки v2 (см. Мастер_ставки_v2_PRD.md) ----------
@@ -313,8 +315,36 @@
       '<div class="muted" style="margin-top:18px">Сменить персонажа:</div>' +
       '<div class="persona-grid">' + personaGrid + "</div>" +
       '<div id="bet-msg" class="muted" style="text-align:center;margin-top:10px"></div>' +
+      '<div class="section-title">История отчётов</div>' +
+      '<div id="bet-history" class="muted">Загрузка…</div>' +
       '<button class="btn-secondary" onclick="renderHome()">К списку ставок</button>';
+    loadBetHistory(b.id);
   };
+
+  // ---------- история отчётов по конкретной ставке — используется и обычной карточкой, и Вызовом,
+  // чтобы клик по ставке в любом из виджетов профиля показывал не только статус, но и что реально
+  // отправлялось по дням ----------
+  async function loadBetHistory(betId) {
+    const el = document.getElementById("bet-history");
+    if (!el || !betId) return;
+    try {
+      const r = await api("/bet-reports?bet_id=" + betId);
+      const data = await r.json();
+      if (!r.ok) { el.textContent = "Не удалось загрузить историю."; return; }
+      const reports = data.reports || [];
+      if (!reports.length) { el.textContent = "Пока нет отчётов."; return; }
+      el.className = "";
+      el.innerHTML = reports.map(function (rep) {
+        const media = rep.has_photo ? " 📷" : "";
+        const text = rep.content ? esc(rep.content) : "(без текста)";
+        return '<div class="row" style="align-items:flex-start"><span>День ' + rep.day + ' · ' + formatRuDate(rep.date) + '</span>' +
+          '<span style="text-align:right">' + text + media + '</span></div>';
+      }).join("");
+    } catch (e) {
+      el.textContent = "Ошибка соединения.";
+    }
+  }
+  window.loadBetHistory = loadBetHistory;
 
   window.sendReport = async function (betId) {
     const msgEl = document.getElementById("bet-msg");
@@ -438,7 +468,10 @@
       oppLine + '</div>' +
       adjBlock + reportBtn + adjustBtn +
       '<div id="adjust-form-holder"></div>' +
+      '<div class="section-title">История отчётов</div>' +
+      '<div id="bet-history" class="muted">Загрузка…</div>' +
       '<button class="btn-secondary" onclick="renderHome()">К списку</button>';
+    if (c.my_bet_id) loadBetHistory(c.my_bet_id);
   }
   function describeAdjustment(a) {
     const parts = [];
@@ -1438,6 +1471,22 @@
       '<button class="btn-secondary" style="margin-top:8px" onclick="renderHome()">К вызовам</button>';
   }
 
+  function publicSection(ps) {
+    ps = ps || { total: 0, active: 0, kept: 0, failed: 0 };
+    if (!ps.total) {
+      return '<div class="section-title">📣 Публичные ставки</div>' +
+        '<div class="muted" style="margin-bottom:8px">Пока ни одной публичной ставки — заяви о цели на людях.</div>' +
+        '<button class="btn-secondary" onclick="renderHome()">К ставкам</button>';
+    }
+    const items = [[ps.total, "всего"], [ps.active, "сейчас идёт"], [ps.kept, "сдержано"], [ps.failed, "не сдержано"]];
+    const grid = items.map(function (s) {
+      return '<div class="stat-box"><div class="num">' + s[0] + '</div><div class="lbl">' + s[1] + "</div></div>";
+    }).join("");
+    return '<div class="section-title">📣 Публичные ставки</div>' +
+      '<div class="stat-grid">' + grid + "</div>" +
+      '<button class="btn-secondary" style="margin-top:8px" onclick="renderHome()">К ставкам</button>';
+  }
+
   function drawProfile() {
     const app = document.getElementById("app");
     const p = ctx.profile;
@@ -1510,6 +1559,7 @@
       '<div class="stat-grid">' + statGrid + "</div>" +
 
       challengeSection(p.challenge_stats) +
+      publicSection(p.public_stats) +
 
       '<div class="section-title">Персонажи</div>' +
       bondRows +
