@@ -234,12 +234,16 @@
       html += bets.map(function (b) {
         const left = Math.max(0, b.duration_days - b.day_n);
         const pct = Math.max(2, Math.min(100, Math.round((b.day_n / b.duration_days) * 100)));
+        const reportBadge = b.reported_today
+          ? '<div class="badge" style="background:rgba(46,204,113,.15);color:#2ecc71;border-color:rgba(46,204,113,.35)">✓ Сегодня отчитался(-ась)</div>'
+          : '<div class="badge" style="background:rgba(255,255,255,.06)">Ждём отчёт сегодня</div>';
         return '<div class="bet-card" onclick="openBet(' + b.id + ')">' +
           '<div class="top"><div class="goal">' + esc(b.goal) + '</div>' +
           '<div class="badge">#' + b.id + "</div></div>" +
           '<div class="meta">' + TYPES[b.type] + " · " + (b.mode === "public" ? "Публично" : "Лично") +
           " · День " + b.day_n + " из " + b.duration_days + " · ещё " + left + " дн.</div>" +
           '<div class="meta">Персонаж: ' + (PERSONAS[b.persona] || "не выбран") + "</div>" +
+          '<div style="margin-top:6px">' + reportBadge + '</div>' +
           '<div class="bar"><i style="width:' + pct + '%"></i></div></div>';
       }).join("");
     } else if (!pending.length) {
@@ -300,9 +304,12 @@
       '<div class="row"><span>Режим</span><span>' + (b.mode === "public" ? "Публично" : "Лично") + "</span></div>" +
       '<div class="row"><span>День</span><span>' + b.day_n + " из " + b.duration_days + "</span></div>" +
       '<div class="row"><span>До финиша</span><span>' + left + " дн.</span></div>" +
-      '<div class="row"><span>На кону</span><span>' + stakeLine + "</span></div></div>" +
+      '<div class="row"><span>На кону</span><span>' + stakeLine + "</span></div>" +
+      '<div class="row"><span>Отчёт сегодня</span><span>' + (b.reported_today ? "✓ отправлен" : "ещё нет") + "</span></div></div>" +
       (b.stake > 0 && !b.stake_paid ? '<button onclick="payStake(' + b.id + "," + b.stake + ')">Оплатить ' + b.stake + " ⭐</button>" : "") +
-      '<button onclick="sendReport(' + b.id + ')">Отправить отчёт</button>' +
+      (b.reported_today
+        ? '<button class="btn-secondary" disabled style="opacity:.6">Отчёт за сегодня уже отправлен</button>'
+        : '<button onclick="sendReport(' + b.id + ')">Отправить отчёт</button>') +
       '<div class="muted" style="margin-top:18px">Сменить персонажа:</div>' +
       '<div class="persona-grid">' + personaGrid + "</div>" +
       '<div id="bet-msg" class="muted" style="text-align:center;margin-top:10px"></div>' +
@@ -691,7 +698,7 @@
     if (name === "kind") {
       showNext = false;
       body = "<h2>Как даёшь слово?</h2>" +
-        '<div class="opt" onclick="pickKind(\'solo\')"><b>Соло</b><div class="muted">Обычная ставка — только ты и твоё слово.</div></div>' +
+        '<div class="opt" onclick="pickKind(\'solo\')"><b>Соло</b><div class="muted">Только ты и твоё слово — один на один с собой.</div></div>' +
         '<div class="opt" onclick="pickKind(\'challenge\')"><b>Вызов</b><div class="muted">Позови конкретного человека — соревнуйтесь на одинаковых условиях, одна дата старта на двоих.</div></div>';
     } else if (name === "mode") {
       showNext = false;
@@ -802,9 +809,9 @@
         return '<div class="chip' + active + '" onclick="pickCheckinTime(\'' + t + '\')">' + t + "</div>";
       }).join("");
       body = "<h2>Свидетель</h2>" +
-        '<div class="muted" style="margin-bottom:10px">Отказ снаружи не виден — нужен проверяющий. Пришли его номер телефона и Telegram.</div>' +
-        '<input id="f-wphone" type="text" placeholder="Номер телефона" value="' + escAttr(d.witness_phone) + '" style="margin-bottom:10px">' +
-        '<input id="f-wtg" type="text" placeholder="@username или имя" value="' + escAttr(d.witness_tg) + '">' +
+        '<div class="muted" style="margin-bottom:10px">Отказ снаружи не виден — нужен проверяющий. Напиши, как его зовут — ссылку-приглашение перешлёшь ему через Telegram на следующем шаге, выбрав его прямо из своих контактов.</div>' +
+        '<input id="f-wtg" type="text" placeholder="Имя или @username" value="' + escAttr(d.witness_tg) + '" style="margin-bottom:10px">' +
+        '<input id="f-wphone" type="text" placeholder="Номер телефона (необязательно)" value="' + escAttr(d.witness_phone) + '">' +
         '<div class="muted" style="margin:14px 0 6px">Во сколько бот будет проверять (минимум раз в неделю)?</div>' +
         '<div class="chips">' + timeChips + "</div>" +
         '<div id="f-err" class="err"></div>';
@@ -820,8 +827,8 @@
         '<div id="f-err" class="err"></div>';
     } else if (name === "invitee") {
       body = "<h2>Кого вызываешь?</h2>" +
-        '<div class="muted" style="margin-bottom:10px">Введи его @username в Telegram или найди по имени.</div>' +
-        '<input id="f-invitee" type="text" placeholder="@username или имя" value="' + escAttr(d.invitee_label || "") + '" oninput="searchInvitee(this.value)">' +
+        '<div class="muted" style="margin-bottom:10px">Найди среди уже играющих в Сила Слова — или просто впиши имя, если его тут ещё нет: ссылку на вызов перешлёшь ему через Telegram на следующем шаге, выбрав его прямо из своих контактов.</div>' +
+        '<input id="f-invitee" type="text" placeholder="Имя или @username" value="' + escAttr(d.invitee_label || "") + '" oninput="searchInvitee(this.value)">' +
         '<div id="invitee-results" style="margin-top:10px">' + renderInviteeResults() + "</div>" +
         '<div id="f-err" class="err"></div>';
     } else if (name === "video") {
@@ -1177,9 +1184,8 @@
     if (name === "witness") {
       const phone = document.getElementById("f-wphone").value.trim();
       const wtg = document.getElementById("f-wtg").value.trim();
-      if (!phone) return err("Пришли номер телефона свидетеля.");
-      if (!wtg) return err("Напиши Telegram свидетеля.");
-      d.witness_phone = phone; d.witness_tg = wtg;
+      if (!wtg) return err("Напиши имя или Telegram свидетеля.");
+      d.witness_phone = phone || null; d.witness_tg = wtg;
     }
     if (name === "video") {
       if (!d.videoFile) return err("Прикрепи видео — без него слово не считается.");
@@ -1222,7 +1228,7 @@
     const app = document.getElementById("app");
     const inv = ctx.lastChallengeInvite;
     const inviteBlock = inv
-      ? '<div class="card" style="text-align:center"><div class="muted" style="margin-bottom:8px">Перешли эту ссылку или QR тому, кого вызываешь:</div>' +
+      ? '<div class="card" style="text-align:center"><div class="muted" style="margin-bottom:8px">Нажми «Поделиться» и выбери соперника прямо из своих контактов в Telegram — или перешли ссылку/QR вручную:</div>' +
         '<img src="' + escAttr(inv.qr) + '" alt="QR" style="width:160px;height:160px;border-radius:12px;margin-bottom:8px">' +
         '<div style="word-break:break-all;font-size:13px;color:var(--gold2);margin-bottom:10px">' + esc(inv.link) + "</div>" +
         '<div style="display:flex;gap:8px"><button class="btn-secondary" style="flex:1;margin:0" onclick="shareChallengeInvite()">Поделиться</button>' +
@@ -1349,7 +1355,7 @@
       : '<div class="muted" style="text-align:center;margin-bottom:12px">⭐ Ставка оплачена.</div>';
     const wi = ctx.lastWitnessInvite;
     const witnessBlock = wi
-      ? '<div class="card" style="text-align:center"><div class="muted" style="margin-bottom:8px">Перешли эту ссылку или QR своему свидетелю:</div>' +
+      ? '<div class="card" style="text-align:center"><div class="muted" style="margin-bottom:8px">Нажми «Поделиться» и выбери свидетеля прямо из своих контактов в Telegram — или перешли ссылку/QR вручную:</div>' +
         '<img src="' + escAttr(wi.qr) + '" alt="QR" style="width:160px;height:160px;border-radius:12px;margin-bottom:8px">' +
         '<div style="word-break:break-all;font-size:13px;color:var(--gold2);margin-bottom:10px">' + esc(wi.link) + "</div>" +
         '<div style="display:flex;gap:8px"><button class="btn-secondary" style="flex:1;margin:0" onclick="shareWitnessLink()">Поделиться</button>' +
@@ -1415,6 +1421,22 @@
       app.innerHTML = emptyMsg("Ошибка соединения.") + '<button class="btn-secondary" onclick="renderHome()">Назад</button>';
     }
   };
+
+  function challengeSection(cs) {
+    cs = cs || { total: 0, active: 0, kept: 0, failed: 0 };
+    if (!cs.total) {
+      return '<div class="section-title">⚔ Вызовы</div>' +
+        '<div class="muted" style="margin-bottom:8px">Пока ни одного вызова — позови кого-нибудь на одинаковых условиях.</div>' +
+        '<button class="btn-secondary" onclick="renderHome()">К вызовам</button>';
+    }
+    const items = [[cs.total, "всего"], [cs.active, "сейчас идёт"], [cs.kept, "сдержано"], [cs.failed, "не сдержано"]];
+    const grid = items.map(function (s) {
+      return '<div class="stat-box"><div class="num">' + s[0] + '</div><div class="lbl">' + s[1] + "</div></div>";
+    }).join("");
+    return '<div class="section-title">⚔ Вызовы</div>' +
+      '<div class="stat-grid">' + grid + "</div>" +
+      '<button class="btn-secondary" style="margin-top:8px" onclick="renderHome()">К вызовам</button>';
+  }
 
   function drawProfile() {
     const app = document.getElementById("app");
@@ -1486,6 +1508,8 @@
 
       '<div class="section-title">Статистика</div>' +
       '<div class="stat-grid">' + statGrid + "</div>" +
+
+      challengeSection(p.challenge_stats) +
 
       '<div class="section-title">Персонажи</div>' +
       bondRows +
