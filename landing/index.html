@@ -111,6 +111,37 @@
   .step b { display: block; font-size: 16.5px; margin-bottom: 4px; }
   .step p { margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.6; }
 
+  /* ---------- журнал перемен: полноэкранные слайды-утверждения сразу после hero ---------- */
+  .journey { height: 100vh; overflow-y: auto; scroll-snap-type: y mandatory; background: var(--dark);
+    position: relative; scrollbar-width: none; }
+  .journey::-webkit-scrollbar { display: none; }
+  .j-slide { height: 100vh; scroll-snap-align: start; scroll-snap-stop: always; display: flex;
+    align-items: center; justify-content: center; text-align: center; padding: 40px 26px; position: relative;
+    overflow: hidden; }
+  .j-slide::before { content: ""; position: absolute; inset: 0; z-index: 0; opacity: .55;
+    background: radial-gradient(ellipse 65% 50% at 50% 45%, var(--j-glow, rgba(232,176,75,.14)), transparent 72%); }
+  .j-slide.pain { --j-glow: rgba(192,57,47,.16); }
+  .j-slide.pivot, .j-slide.duel, .j-slide.together { --j-glow: rgba(232,176,75,.2); }
+  .j-inner { position: relative; z-index: 1; max-width: 720px; }
+  .j-emoji { font-size: clamp(30px, 7vw, 44px); display: block; margin-bottom: 20px;
+    opacity: 0; transform: scale(.6); transition: opacity .5s ease .05s, transform .5s ease .05s; }
+  .j-text { font-size: clamp(27px, 7.2vw, 50px); font-weight: 800; line-height: 1.24; color: #f4f4f6;
+    opacity: 0; transform: translateY(22px); transition: opacity .65s ease, transform .65s ease; }
+  .j-slide.in .j-emoji { opacity: 1; transform: scale(1); }
+  .j-slide.in .j-text { opacity: 1; transform: translateY(0); }
+  .j-text strong.hl, .j-text strong.hl-red { font-weight: 800; }
+  .j-count { position: absolute; top: 26px; left: 50%; transform: translateX(-50%); z-index: 1;
+    font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: #6f7178; }
+  .j-dots { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); z-index: 5;
+    display: flex; flex-direction: column; gap: 9px; }
+  .j-dot { width: 7px; height: 7px; border-radius: 50%; background: #34353c; cursor: pointer; transition: background .3s, transform .3s; }
+  .j-dot.active { background: var(--gold-bg); transform: scale(1.3); }
+  .j-hint { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 1;
+    font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: #6f7178; animation: jbob 1.8s ease-in-out infinite; }
+  @keyframes jbob { 0%, 100% { transform: translate(-50%, 0); opacity: .7; } 50% { transform: translate(-50%, 6px); opacity: 1; } }
+  .j-slide.bridge .j-text { color: var(--gold-bg); cursor: pointer; }
+  @media (prefers-reduced-motion: reduce) { .j-emoji, .j-text { opacity: 1; transform: none; transition: none; } }
+
   /* format cards (Результат/Привычка/Аскеза) */
   .fmt-card { border-radius: 20px; padding: 26px; border: 1px solid var(--line); }
   .fmt-card.gold { border-top: 4px solid var(--gold-bg); }
@@ -271,6 +302,61 @@
   </div>
 </section>
 
+<!-- ================= 1b. ЖУРНАЛ ПЕРЕМЕН — полноэкранные слайды-утверждения ================= -->
+<div class="journey" id="journey">
+  <div class="j-dots" id="j-dots"></div>
+
+  <div class="j-slide pain in">
+    <span class="j-count">1 / 12</span>
+    <div class="j-inner"><span class="j-emoji">😩</span><div class="j-text">Задолбался себя обманывать?</div></div>
+  </div>
+  <div class="j-slide pain">
+    <span class="j-count">2 / 12</span>
+    <div class="j-inner"><span class="j-emoji">🌀</span><div class="j-text">Застрял в тупике и нет выбора?</div></div>
+  </div>
+  <div class="j-slide pain">
+    <span class="j-count">3 / 12</span>
+    <div class="j-inner"><span class="j-emoji">🚫</span><div class="j-text">Не можешь найти сил сказать нет?</div></div>
+  </div>
+  <div class="j-slide pain">
+    <span class="j-count">4 / 12</span>
+    <div class="j-inner"><span class="j-emoji">🫥</span><div class="j-text">Нет поддержки?</div></div>
+  </div>
+  <div class="j-slide pain">
+    <span class="j-count">5 / 12</span>
+    <div class="j-inner"><span class="j-emoji">📉</span><div class="j-text">Не растёт результат?</div></div>
+  </div>
+  <div class="j-slide pain">
+    <span class="j-count">6 / 12</span>
+    <div class="j-inner"><span class="j-emoji">🐢</span><div class="j-text">Задолбался чувствовать себя позади?</div></div>
+  </div>
+  <div class="j-slide pivot">
+    <span class="j-count">7 / 12</span>
+    <div class="j-inner"><span class="j-emoji">🔑</span><div class="j-text">Ты тот, кому сюда.</div></div>
+  </div>
+  <div class="j-slide pivot">
+    <span class="j-count">8 / 12</span>
+    <div class="j-inner"><span class="j-emoji">⚡</span><div class="j-text">Здесь начинаются перемены — здесь твоё слово что-то значит.</div></div>
+  </div>
+  <div class="j-slide duel">
+    <span class="j-count">9 / 12</span>
+    <div class="j-inner"><span class="j-emoji">⚔️</span><div class="j-text">Начни меняться — вызови себя старого на дуэль!</div></div>
+  </div>
+  <div class="j-slide duel">
+    <span class="j-count">10 / 12</span>
+    <div class="j-inner"><span class="j-emoji">🏆</span><div class="j-text">Победишь — <strong class="hl">поменяешься, приблизишься к лучшей версии себя</strong>. Нет — <strong class="hl-red">потеряешь что-то: деньги или репутацию</strong>.</div></div>
+  </div>
+  <div class="j-slide together">
+    <span class="j-count">11 / 12</span>
+    <div class="j-inner"><span class="j-emoji">🤜🤛</span><div class="j-text">Меняйся сам — или потягайся с другом.</div></div>
+  </div>
+  <div class="j-slide bridge" onclick="document.getElementById('how').scrollIntoView({behavior:'smooth'})">
+    <span class="j-count">12 / 12</span>
+    <div class="j-inner"><div class="j-text">Вот как это работает…</div></div>
+    <div class="j-hint">Листай ↓</div>
+  </div>
+</div>
+
 <!-- ================= 2. КАК ЭТО РАБОТАЕТ ================= -->
 <section class="sec" id="how">
   <div class="wrap center">
@@ -315,7 +401,7 @@
     <div class="grid cols-2">
       <div class="card reveal"><h3>Предприниматель</h3><p>«Запущу MVP до 1 марта» — с датой и отчётами вместо «доделаю на следующей неделе».</p></div>
       <div class="card reveal"><h3>Спортивная привычка</h3><p>100 отжиманий каждый день — квота пропусков задаёт честные рамки жёсткости.</p></div>
-      <div class="card reveal"><h3>Аскеза от привычки</h3><p>Бросить алкоголь или соцсети ночью — со свидетелем, которому не соврёшь.</p></div>
+      <div class="card reveal"><h3>Аскеза — Добровольный Отказ</h3><p>Бросить алкоголь или соцсети ночью — со свидетелем, которому не соврёшь.</p></div>
       <div class="card reveal"><h3>Подготовка к экзамену</h3><p>Ежедневные часы под присмотром наставника — вместо надежды на дисциплину перед сессией.</p></div>
     </div>
   </div>
@@ -506,7 +592,7 @@
 <section class="sec sec-dark" id="gamification">
   <div class="wrap center">
     <div class="eyebrow">Что растёт со временем</div>
-    <h2 class="section-title">Репутация, а не косметика</h2>
+    <h2 class="section-title">Репутация — Твоя Настоящая Сила</h2>
     <p class="section-lead">Уровень доверия — цифра, которая со временем значит больше, чем внутри самого приложения.</p>
   </div>
   <div class="wrap" style="margin-top:44px">
@@ -613,6 +699,33 @@
     entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
   }, { threshold: .12, rootMargin: '0px 0px -60px 0px' });
   document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
+
+  // ---------- журнал перемен: активный слайд получает .in (проигрывает эмодзи+текст),
+  // точки справа — навигация и индикатор прогресса; scroll-snap делает всю механику листания,
+  // здесь только реакция на то, какой слайд сейчас в фокусе ----------
+  (function () {
+    var journey = document.getElementById('journey');
+    var slides = Array.prototype.slice.call(document.querySelectorAll('.j-slide'));
+    var dotsWrap = document.getElementById('j-dots');
+    if (!journey || !slides.length || !dotsWrap) return;
+    slides.forEach(function (s, i) {
+      var dot = document.createElement('div');
+      dot.className = 'j-dot' + (i === 0 ? ' active' : '');
+      dot.onclick = function () { s.scrollIntoView({ behavior: 'smooth' }); };
+      dotsWrap.appendChild(dot);
+    });
+    var dots = Array.prototype.slice.call(dotsWrap.children);
+    var journeyIO = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        var idx = slides.indexOf(e.target);
+        if (e.isIntersecting) {
+          e.target.classList.add('in');
+          dots.forEach(function (d, i) { d.classList.toggle('active', i === idx); });
+        }
+      });
+    }, { root: journey, threshold: .6 });
+    slides.forEach(function (s) { journeyIO.observe(s); });
+  })();
 </script>
 </body>
 </html>
