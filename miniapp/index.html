@@ -165,7 +165,7 @@
     try {
       const r = await api("/status");
       const data = await r.json();
-      if (r.ok) { ctx.user = data.user; ctx.bets = data.bets || []; ctx.pending = data.pending || []; }
+      if (r.ok) { ctx.user = data.user; ctx.bets = data.bets || []; ctx.pending = data.pending || []; ctx.reviewing = data.reviewing || []; }
     } catch (e) { /* молча — следующий рендер попробует снова */ }
     await refreshChallenges();
   }
@@ -186,7 +186,7 @@
       const r = await api("/status");
       const data = await r.json();
       if (!r.ok) { app.innerHTML = emptyMsg("Не удалось проверить — открой заново через бота."); return; }
-      ctx.user = data.user; ctx.bets = data.bets || []; ctx.pending = data.pending || [];
+      ctx.user = data.user; ctx.bets = data.bets || []; ctx.pending = data.pending || []; ctx.reviewing = data.reviewing || [];
       await refreshChallenges();
       const params = new URLSearchParams(location.search);
       const chToken = params.get("challenge");
@@ -215,8 +215,12 @@
       app.innerHTML = emptyMsg("Сначала пройди быстрый старт в чате бота — напиши боту /start.") + footerNav();
       return;
     }
-    const bets = ctx.bets || [];
-    const pending = ctx.pending || [];
+    // ставки внутри Вызова — уже своя строка в bets (нужно для отчётов/персонажа/ставки),
+    // но на глазах у пользователя не должны дублироваться с виджетом "Мои вызовы" ниже —
+    // показываем их только там, а не вперемешку с обычными личными/публичными ставками.
+    const bets = (ctx.bets || []).filter(function (b) { return !b.challenge_id; });
+    const pending = (ctx.pending || []).filter(function (p) { return !p.challenge_id; });
+    const reviewing = (ctx.reviewing || []).filter(function (r) { return !r.challenge_id; });
     let html = "";
     if (pending.length) {
       html += '<div class="muted" style="margin-bottom:10px">Ждут оплаты, чтобы стать словом:</div>';
@@ -236,6 +240,9 @@
       html += bets.map(function (b) {
         const left = Math.max(0, b.duration_days - b.day_n);
         const pct = Math.max(2, Math.min(100, Math.round((b.day_n / b.duration_days) * 100)));
+        // day_n может на 1 превысить duration_days в последний календарный день срока (пока
+        // не отработал ночной cron-финал) — не показываем "День 4 из 3", выглядит как баг
+        const dayLabel = b.day_n > b.duration_days ? (b.duration_days + " из " + b.duration_days + " (последний)") : (b.day_n + " из " + b.duration_days);
         const reportBadge = b.reported_today
           ? '<div class="badge" style="background:rgba(46,204,113,.15);color:#2ecc71;border-color:rgba(46,204,113,.35)">✓ Сегодня отчитался(-ась)</div>'
           : '<div class="badge" style="background:rgba(255,255,255,.06)">Ждём отчёт сегодня</div>';
@@ -243,7 +250,7 @@
           '<div class="top"><div class="goal">' + esc(b.goal) + '</div>' +
           '<div class="badge">#' + b.id + "</div></div>" +
           '<div class="meta">' + TYPES[b.type] + " · " + (b.mode === "public" ? "Публично" : "Лично") +
-          " · День " + b.day_n + " из " + b.duration_days + " · ещё " + left + " дн.</div>" +
+          " · День " + dayLabel + " · ещё " + left + " дн.</div>" +
           '<div class="meta">Персонаж: ' + (PERSONAS[b.persona] || "не выбран") + "</div>" +
           '<div style="margin-top:6px">' + reportBadge + '</div>' +
           '<div class="bar"><i style="width:' + pct + '%"></i></div></div>';
@@ -251,6 +258,16 @@
     } else if (!pending.length) {
       html += '<div class="empty"><div style="font-size:17px;margin-bottom:4px">Активных ставок нет.</div>' +
         '<div class="muted">Готов проверить себя?</div></div>';
+    }
+    if (reviewing.length) {
+      html += '<div class="muted" style="margin:20px 0 10px">Ждём проверки (' + reviewing.length + '):</div>';
+      html += reviewing.map(function (r) {
+        return '<div class="bet-card" style="border-style:dashed;cursor:default">' +
+          '<div class="top"><div class="goal">' + esc(r.goal) + '</div>' +
+          '<div class="badge">⏳ #' + r.id + "</div></div>" +
+          '<div class="meta">' + TYPES[r.type] + " · " + (r.mode === "public" ? "Публично" : "Лично") + "</div>" +
+          '<div class="meta">Срок вышел — проверяем финальный пруф, скоро сообщим результат.</div></div>';
+      }).join("");
     }
     const challenges = ctx.challenges || [];
     if (challenges.length) {
@@ -271,7 +288,7 @@
 
   function challengeStatusLabel(c) {
     if (c.status === "proposed") return c.my_role === "creator" ? "ждём принятия соперником" : "ждёт решения";
-    if (c.status === "active") return "День " + c.day_n + " из " + c.duration_days;
+    if (c.status === "active") return "День " + (c.day_n > c.duration_days ? c.duration_days + " из " + c.duration_days + " (последний)" : c.day_n + " из " + c.duration_days);
     if (c.status === "completed") return "завершён";
     if (c.status === "declined") return "отклонён";
     if (c.status === "cancelled") return "отменён";
@@ -304,7 +321,7 @@
       '<div class="big">' + esc(b.goal) + "</div>" +
       '<div class="row"><span>Тип</span><span>' + TYPES[b.type] + "</span></div>" +
       '<div class="row"><span>Режим</span><span>' + (b.mode === "public" ? "Публично" : "Лично") + "</span></div>" +
-      '<div class="row"><span>День</span><span>' + b.day_n + " из " + b.duration_days + "</span></div>" +
+      '<div class="row"><span>День</span><span>' + (b.day_n > b.duration_days ? b.duration_days + " из " + b.duration_days + " (последний, ждём итог вечером)" : b.day_n + " из " + b.duration_days) + "</span></div>" +
       '<div class="row"><span>До финиша</span><span>' + left + " дн.</span></div>" +
       '<div class="row"><span>На кону</span><span>' + stakeLine + "</span></div>" +
       '<div class="row"><span>Отчёт сегодня</span><span>' + (b.reported_today ? "✓ отправлен" : "ещё нет") + "</span></div></div>" +
@@ -324,8 +341,9 @@
   // ---------- история отчётов по конкретной ставке — используется и обычной карточкой, и Вызовом,
   // чтобы клик по ставке в любом из виджетов профиля показывал не только статус, но и что реально
   // отправлялось по дням ----------
-  async function loadBetHistory(betId) {
-    const el = document.getElementById("bet-history");
+  async function loadBetHistory(betId, elId) {
+    elId = elId || "bet-history";
+    const el = document.getElementById(elId);
     if (!el || !betId) return;
     try {
       const r = await api("/bet-reports?bet_id=" + betId);
@@ -468,10 +486,14 @@
       oppLine + '</div>' +
       adjBlock + reportBtn + adjustBtn +
       '<div id="adjust-form-holder"></div>' +
-      '<div class="section-title">История отчётов</div>' +
+      '<div class="section-title">Твои отчёты</div>' +
       '<div id="bet-history" class="muted">Загрузка…</div>' +
+      (c.opponent && c.opponent.bet_id
+        ? '<div class="section-title">Отчёты соперника</div><div id="bet-history-opp" class="muted">Загрузка…</div>'
+        : '') +
       '<button class="btn-secondary" onclick="renderHome()">К списку</button>';
     if (c.my_bet_id) loadBetHistory(c.my_bet_id);
+    if (c.opponent && c.opponent.bet_id) loadBetHistory(c.opponent.bet_id, "bet-history-opp");
   }
   function describeAdjustment(a) {
     const parts = [];
@@ -860,7 +882,7 @@
         '<div id="f-err" class="err"></div>';
     } else if (name === "invitee") {
       body = "<h2>Кого вызываешь?</h2>" +
-        '<div class="muted" style="margin-bottom:10px">Найди среди уже играющих в Сила Слова — или просто впиши имя, если его тут ещё нет: ссылку на вызов перешлёшь ему через Telegram на следующем шаге, выбрав его прямо из своих контактов.</div>' +
+        '<div class="muted" style="margin-bottom:10px">Найди среди уже играющих в Сила Слова — ему сразу придёт уведомление о вызове. Если его тут ещё нет, впиши имя — ссылку перешлёшь сам через Telegram на следующем шаге.</div>' +
         '<input id="f-invitee" type="text" placeholder="Имя или @username" value="' + escAttr(d.invitee_label || "") + '" oninput="searchInvitee(this.value)">' +
         '<div id="invitee-results" style="margin-top:10px">' + renderInviteeResults() + "</div>" +
         '<div id="f-err" class="err"></div>';
@@ -1236,7 +1258,7 @@
       const fd = new FormData();
       const draftPayload = {
         type: d.type, goal: d.goal, duration_days: d.days, start_date: d.challenge_start_date,
-        proof_format: d.proof_format, invitee: d.invitee_label, stake: d.stake || 0,
+        proof_format: d.proof_format, invitee: d.invitee_label, invitee_user_id: d.invitee_user_id || null, stake: d.stake || 0,
       };
       if (d.type === "result") { draftPayload.point_a = d.point_a; draftPayload.motivation = d.motivation; }
       if (d.type === "habit") { draftPayload.habit_tier = d.habit_tier; draftPayload.skip_mode = d.skip_mode; draftPayload.allowed_skip_weekdays = d.allowed_skip_weekdays || []; }
