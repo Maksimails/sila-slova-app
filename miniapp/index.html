@@ -561,6 +561,12 @@
   function drawChallengeInvite() {
     const app = document.getElementById("app");
     const ch = ctx.pendingChallenge.data;
+    // соперник должен увидеть видео-обещание создателя ДО того, как решит принимать вызов —
+    // иначе решение принималось вслепую, по одному только тексту условий.
+    const videoBlock = ch.creator_video_url
+      ? '<div class="muted" style="margin-bottom:6px">Видео-обещание ' + esc(ch.creator_name) + ':</div>' +
+        '<video src="' + escAttr(ch.creator_video_url) + '" controls playsinline style="width:100%;border-radius:12px;background:#000;margin-bottom:16px"></video>'
+      : "";
     app.innerHTML =
       '<div class="card"><div class="muted">Вызов от ' + esc(ch.creator_name) + '</div>' +
       '<div class="big">' + esc(ch.goal) + '</div>' +
@@ -569,6 +575,7 @@
       '<div class="row"><span>Срок</span><span>' + ch.duration_days + ' дн.</span></div>' +
       '<div class="row"><span>Пруф</span><span>' + esc(ch.proof_format) + '</span></div>' +
       '<div class="row"><span>Ставка</span><span>' + (ch.stake ? ch.stake + ' ⭐ с каждой стороны' : 'без ставки') + '</span></div></div>' +
+      videoBlock +
       '<div class="muted" style="text-align:center;margin-bottom:16px">Условия менять нельзя на этом шаге — предложить правки можно будет после того, как оба согласятся.</div>' +
       '<button onclick="startChallengeAcceptVideo()">Принять вызов</button>' +
       '<button class="btn-secondary" onclick="declineChallengeInvite()">Отклонить</button>';
@@ -805,9 +812,10 @@
         '<textarea id="f-mot" placeholder="Например: чтобы чувствовать себя увереннее — или просто потому что обещал">' + esc(d.motivation) + "</textarea>" +
         '<div id="f-err" class="err"></div>';
     } else if (name === "startDate") {
-      const min = new Date(Date.now() + 3 * 3600e3 + 864e5).toISOString().slice(0, 10);
-      const chips = '<div class="chips"><div class="chip" onclick="pickChallengeStart(1)">Завтра</div>' +
-        '<div class="chip" onclick="pickChallengeStart(3)">Через 3 дня</div>' +
+      const min = new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10);
+      const chips = '<div class="chips"><div class="chip" onclick="pickChallengeStart(0)">Сегодня</div>' +
+        '<div class="chip" onclick="pickChallengeStart(1)">Завтра</div></div>' +
+        '<div class="chips" style="margin-top:8px"><div class="chip" onclick="pickChallengeStart(3)">Через 3 дня</div>' +
         '<div class="chip" onclick="pickChallengeStart(7)">Через неделю</div></div>';
       body = "<h2>Когда стартуете?</h2>" +
         '<div class="muted" style="margin-bottom:10px">Оба участника начинают день 1 одновременно — в эту дату.</div>' +
