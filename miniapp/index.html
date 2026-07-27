@@ -149,7 +149,7 @@
     return parts[2] + "." + parts[1] + "." + parts[0];
   }
 
-  let ctx = { user: null, bets: [], pending: [], draft: {}, step: 0 };
+  let ctx = { user: null, bets: [], pending: [], draft: {}, step: 0, notifications: [], unreadCount: 0 };
 
   function esc(s) { return (s || "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
   function escAttr(s) { return esc(s).replace(/"/g, "&quot;"); }
@@ -172,6 +172,17 @@
       if (r.ok) { ctx.user = data.user; ctx.bets = data.bets || []; ctx.pending = data.pending || []; ctx.reviewing = data.reviewing || []; }
     } catch (e) { /* молча — следующий рендер попробует снова */ }
     await refreshChallenges();
+    await refreshNotifications();
+  }
+
+  // ---------- уведомления — колокольчик в шапке: комментарии, активность соперника,
+  // статусы Вызова. Список + счётчик непрочитанных подтягиваются вместе со статусом.
+  async function refreshNotifications() {
+    try {
+      const r = await api("/notifications");
+      const data = await r.json();
+      if (r.ok) { ctx.notifications = data.notifications || []; ctx.unreadCount = data.unread_count || 0; }
+    } catch (e) { /* молча */ }
   }
 
   // ---------- Вызов (Challenge) — Фаза 1: 1:1. См. Вызов_фича_спека_v1.md ----------
@@ -192,6 +203,7 @@
       if (!r.ok) { app.innerHTML = emptyMsg("Не удалось проверить — открой заново через бота."); return; }
       ctx.user = data.user; ctx.bets = data.bets || []; ctx.pending = data.pending || []; ctx.reviewing = data.reviewing || [];
       await refreshChallenges();
+      await refreshNotifications();
       const params = new URLSearchParams(location.search);
       const chToken = params.get("challenge");
       if (chToken) { renderChallengeInvite(chToken); return; }
@@ -206,7 +218,47 @@
   }
 
   function footerNav() {
-    return '<div class="footer-nav"><a onclick="renderProfile()">👤 Профиль</a><a onclick="showInfo()">Как это работает</a><a onclick="closeApp()">Поддержка — в чате</a></div>';
+    const bellBadge = ctx.unreadCount > 0 ? '<span style="background:#c0392f;color:#fff;border-radius:10px;padding:1px 6px;font-size:11px;margin-left:4px">' + ctx.unreadCount + '</span>' : '';
+    return '<div class="footer-nav"><a onclick="renderNotifications()">🔔 Уведомления' + bellBadge + '</a><a onclick="renderProfile()">👤 Профиль</a><a onclick="showInfo()">Как это работает</a><a onclick="closeApp()">Поддержка — в чате</a></div>';
+  }
+
+  // ---------- экран уведомлений ----------
+  window.renderNotifications = async function () {
+    const app = document.getElementById("app");
+    await refreshNotifications();
+    const list = ctx.notifications || [];
+    const icons = { comment: "💬", opponent_report: "⚔️", challenge_accepted: "⚔️", challenge_declined: "🚫", challenge_activated: "🏁" };
+    app.innerHTML =
+      '<div class="section-title">Уведомления' + (ctx.unreadCount > 0 ? " (" + ctx.unreadCount + " новых)" : "") + '</div>' +
+      (list.length
+        ? list.map(function (n) {
+            const icon = icons[n.type] || "🔔";
+            const unreadStyle = n.is_read ? "" : "font-weight:700";
+            return '<div class="card" style="cursor:pointer;' + unreadStyle + '" onclick="openFromNotification(' + n.id + ',' + (n.bet_id ?? "null") + ',' + (n.challenge_id ?? "null") + ')">' +
+              '<div>' + icon + ' ' + esc(n.message) + '</div>' +
+              '<div class="muted" style="font-size:11px;margin-top:4px">' + formatRuDate((n.created_at || "").slice(0, 10)) + '</div>' +
+              '</div>';
+          }).join("")
+        : emptyMsg("Пока тихо — как появится активность, увидишь здесь.")) +
+      (ctx.unreadCount > 0 ? '<button class="btn-secondary" onclick="markAllNotificationsRead()">Отметить всё прочитанным</button>' : "") +
+      '<button class="btn-secondary" onclick="renderHome()">На главный экран</button>';
+  };
+
+  window.markAllNotificationsRead = async function () {
+    try { await api("/notifications-read", { method: "POST", body: JSON.stringify({ all: true }) }); } catch (e) { /* молча */ }
+    renderNotifications();
+  };
+
+  window.openFromNotification = async function (id, betId, challengeId) {
+    try { await api("/notifications-read", { method: "POST", body: JSON.stringify({ id: id }) }); } catch (e) { /* молча */ }
+    await refreshNotifications();
+    if (challengeId) { await refreshChallenges(); openChallengeDetail(challengeId); return; }
+    if (betId) {
+      await refreshStatus();
+      const has = (ctx.bets || []).some(function (b) { return b.id === betId; });
+      if (has) { openBet(betId); return; }
+    }
+    renderHome();
   }
   window.showInfo = function () {
     document.getElementById("app").innerHTML =
@@ -335,7 +387,8 @@
       '<div class="row"><span>Отчёт сегодня</span><span>' + (b.reported_today ? "✓ отправлен" : "ещё нет") + "</span></div></div>" +
       (b.video_url
         ? '<div class="section-title">🎬 Моё видео-обещание</div>' +
-          '<video src="' + escAttr(b.video_url) + '" controls playsinline style="width:100%;aspect-ratio:9/16;object-fit:contain;background:#000;border-radius:12px;display:block;margin-bottom:12px"></video>'
+          '<video src="' + escAttr(b.video_url) + '" controls playsinline webkit-playsinline="true" preload="metadata" style="width:100%;height:auto;max-height:70vh;background:#000;border-radius:12px;display:block;margin-bottom:12px"></video>' +
+          commentsToggleHtml(b.id, 0, "bet-video-cmt")
         : "") +
       (b.stake > 0 && !b.stake_paid ? '<button onclick="payStake(' + b.id + "," + b.stake + ')">Оплатить ' + b.stake + " ⭐</button>" : "") +
       (b.reported_today
@@ -358,7 +411,7 @@
   // каждая строка с media_url кликабельна и разворачивает плеер именно за этот день.
   function renderReportMedia(rep) {
     if (rep.media_type === "video") {
-      return '<video src="' + escAttr(rep.media_url) + '" controls playsinline style="width:100%;aspect-ratio:9/16;object-fit:contain;background:#000;border-radius:12px;display:block"></video>';
+      return '<video src="' + escAttr(rep.media_url) + '" controls playsinline webkit-playsinline="true" preload="metadata" style="width:100%;height:auto;max-height:70vh;background:#000;border-radius:12px;display:block"></video>';
     }
     return '<img src="' + escAttr(rep.media_url) + '" style="width:100%;border-radius:12px;display:block">';
   }
@@ -385,10 +438,12 @@
         const text = rep.content ? esc(rep.content) : "(без текста)";
         const viewHint = hasMedia ? ' <span style="color:var(--gold2);font-size:12px;text-decoration:underline">смотреть ▾</span>' : "";
         const rowAttrs = hasMedia ? ' onclick="toggleReportMedia(\'' + mediaId + '\')" style="cursor:pointer"' : "";
-        return '<div' + rowAttrs + '>' +
-          '<div class="row" style="align-items:flex-start"><span>День ' + rep.day + ' · ' + formatRuDate(rep.date) + '</span>' +
-          '<span style="text-align:right">' + text + icon + viewHint + '</span></div>' +
+        const cmtId = elId + "-cmt-" + idx;
+        return '<div>' +
+          '<div' + rowAttrs + '><div class="row" style="align-items:flex-start"><span>День ' + rep.day + ' · ' + formatRuDate(rep.date) + '</span>' +
+          '<span style="text-align:right">' + text + icon + viewHint + '</span></div></div>' +
           (hasMedia ? '<div id="' + mediaId + '" style="display:none;margin:2px 0 12px">' + renderReportMedia(rep) + '</div>' : '') +
+          commentsToggleHtml(betId, rep.day, cmtId) +
           '</div>';
       }).join("");
     } catch (e) {
@@ -396,6 +451,59 @@
     }
   }
   window.loadBetHistory = loadBetHistory;
+
+  // ---------- комментарии — первый шаг к соц-механике: каждое видео-обещание (day=0) и каждый
+  // отчёт конкретного дня можно комментировать. Доступ открыт любому, кто открыл ставку в
+  // приложении (не только участникам Вызова) — свёрнуто по умолчанию, чтобы не захламлять экран.
+  function commentsToggleHtml(betId, day, uid) {
+    return '<div style="margin:2px 0 14px">' +
+      '<span onclick="toggleComments(' + betId + ',' + day + ',\'' + uid + '\')" style="cursor:pointer;color:var(--gold2);font-size:12.5px;text-decoration:underline">💬 комментарии</span>' +
+      '<div id="' + uid + '" style="display:none;margin-top:8px">' +
+      '<div id="' + uid + '-list" class="muted" style="font-size:13px">Загрузка…</div>' +
+      '<div style="display:flex;gap:8px;margin-top:8px">' +
+      '<input id="' + uid + '-input" placeholder="Написать комментарий…" maxlength="500" style="flex:1">' +
+      '<button style="width:auto;padding:8px 14px" onclick="postComment(' + betId + ',' + day + ',\'' + uid + '\')">➤</button>' +
+      '</div></div></div>';
+  }
+  window.toggleComments = function (betId, day, uid) {
+    const el = document.getElementById(uid);
+    if (!el) return;
+    const opening = el.style.display === "none";
+    el.style.display = opening ? "block" : "none";
+    if (opening) loadComments(betId, day, uid + "-list");
+  };
+  async function loadComments(betId, day, listId) {
+    const el = document.getElementById(listId);
+    if (!el) return;
+    el.textContent = "Загрузка…";
+    try {
+      const r = await api("/comments?bet_id=" + betId + "&day=" + day);
+      const data = await r.json();
+      if (!r.ok) { el.textContent = "Не удалось загрузить."; return; }
+      const comments = data.comments || [];
+      el.innerHTML = comments.length
+        ? comments.map(function (c) {
+            return '<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08)">' +
+              '<b>' + esc(c.name) + '</b> <span class="muted" style="font-size:11px">' + formatRuDate((c.created_at || "").slice(0, 10)) + '</span>' +
+              '<div>' + esc(c.text) + '</div></div>';
+          }).join("")
+        : '<span class="muted">Комментариев пока нет — будь первым.</span>';
+    } catch (e) {
+      el.textContent = "Ошибка соединения.";
+    }
+  }
+  window.postComment = async function (betId, day, uid) {
+    const input = document.getElementById(uid + "-input");
+    if (!input) return;
+    const text = input.value.trim();
+    if (!text) return;
+    input.disabled = true;
+    try {
+      const r = await api("/comments", { method: "POST", body: JSON.stringify({ bet_id: betId, day: day, text: text }) });
+      if (r.ok) { input.value = ""; await loadComments(betId, day, uid + "-list"); }
+    } catch (e) { /* молча */ }
+    input.disabled = false;
+  };
 
   window.sendReport = async function (betId) {
     const msgEl = document.getElementById("bet-msg");
@@ -499,13 +607,15 @@
   // запроса не нужно. Пока соперник не принял вызов — его слота просто нет, не показываем пустышку.
   function buildChallengeVideos(c) {
     const slots = [];
-    if (c.my_video_url) slots.push({ label: challengeRoleLabel(c.my_role) + " · Ты", url: c.my_video_url });
-    if (c.opponent && c.opponent.video_url) slots.push({ label: challengeRoleLabel(challengeOtherRole(c.my_role)) + " · " + esc(c.opponent.name), url: c.opponent.video_url });
+    if (c.my_video_url) slots.push({ label: challengeRoleLabel(c.my_role) + " · Ты", url: c.my_video_url, betId: c.my_bet_id });
+    if (c.opponent && c.opponent.video_url) slots.push({ label: challengeRoleLabel(challengeOtherRole(c.my_role)) + " · " + esc(c.opponent.name), url: c.opponent.video_url, betId: c.opponent.bet_id });
     if (!slots.length) return "";
     const cols = slots.length > 1 ? 2 : 1;
-    const html = slots.map(function (s) {
+    const html = slots.map(function (s, idx) {
       return '<div class="video-slot"><div class="video-slot-label">' + s.label + '</div>' +
-        '<video src="' + escAttr(s.url) + '" controls playsinline style="width:100%;aspect-ratio:9/16;object-fit:contain;background:#000;border-radius:12px;display:block"></video></div>';
+        '<video src="' + escAttr(s.url) + '" controls playsinline webkit-playsinline="true" preload="metadata" style="width:100%;height:auto;max-height:45vh;background:#000;border-radius:12px;display:block"></video>' +
+        (s.betId ? commentsToggleHtml(s.betId, 0, "duel-cmt-" + idx) : "") +
+        '</div>';
     }).join("");
     const waitNote = (slots.length === 1 && c.opponent)
       ? '<div class="muted" style="text-align:center;margin-top:6px;font-size:12.5px">Видео соперника появится, как только он примет вызов.</div>' : "";
