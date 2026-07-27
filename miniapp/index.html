@@ -122,7 +122,7 @@
 
   const API = "https://mparfxpddlkfuixminnx.supabase.co/functions/v1/miniapp";
   const initData = tg?.initData || "";
-  const TYPES = { result: "Результат", habit: "Привычка", quit: "Отказ" };
+  const TYPES = { result: "Результат", habit: "Привычка", quit: "Аскеза" };
   const PERSONAS = { confucius: "Конфуций", arnold: "Физрук Арнольд", zina: "Баба Зина 🔞", angela: "Анжела Фокс" };
   // финальные портреты персонажей — те же файлы, что лежат в папке "Character Visuals",
   // залиты в этот же репозиторий на GitHub Pages рядом с index.html
@@ -776,9 +776,9 @@
         '<div class="opt" onclick="pick(\'type\',\'habit\')"><b>Привычка</b><div class="muted">Регулярно выполнять действие</div>' +
         '<div class="muted" style="font-size:12.5px;margin-top:4px">' + esc(EXAMPLES.habit.slice(0, 4).join(" · ")) + '</div></div>' +
         (isChallenge ? "" :
-          '<div class="opt" onclick="pick(\'type\',\'quit\')"><b>Отказ</b><div class="muted">Отказаться от чего-то на срок</div>' +
+          '<div class="opt" onclick="pick(\'type\',\'quit\')"><b>Аскеза (Добровольный Отказ)</b><div class="muted">Отказаться от чего-то на срок</div>' +
           '<div class="muted" style="font-size:12.5px;margin-top:4px">' + esc(EXAMPLES.quit.slice(0, 4).join(" · ")) + '</div></div>') +
-        (isChallenge ? '<div class="muted" style="margin-top:8px;font-size:12.5px">В Вызове доступны Результат и Привычка — Отказ завязан на личного свидетеля, тут не пересекаемся.</div>' : "");
+        (isChallenge ? '<div class="muted" style="margin-top:8px;font-size:12.5px">В Вызове доступны Результат и Привычка — Аскеза завязана на личного свидетеля, тут не пересекаемся.</div>' : "");
     } else if (name === "goal") {
       const t = d.type;
       const ex = EXAMPLES[t] || [];
@@ -872,7 +872,7 @@
         return '<div class="chip' + active + '" onclick="pickCheckinTime(\'' + t + '\')">' + t + "</div>";
       }).join("");
       body = "<h2>Свидетель</h2>" +
-        '<div class="muted" style="margin-bottom:10px">Отказ снаружи не виден — нужен проверяющий. Напиши, как его зовут — ссылку-приглашение перешлёшь ему через Telegram на следующем шаге, выбрав его прямо из своих контактов.</div>' +
+        '<div class="muted" style="margin-bottom:10px">Аскеза снаружи не видна — нужен проверяющий. Напиши, как его зовут — ссылку-приглашение перешлёшь ему через Telegram на следующем шаге, выбрав его прямо из своих контактов.</div>' +
         '<input id="f-wtg" type="text" placeholder="Имя или @username" value="' + escAttr(d.witness_tg) + '" style="margin-bottom:10px">' +
         '<input id="f-wphone" type="text" placeholder="Номер телефона (необязательно)" value="' + escAttr(d.witness_phone) + '">' +
         '<div class="muted" style="margin:14px 0 6px">Во сколько бот будет проверять (минимум раз в неделю)?</div>' +
@@ -1239,7 +1239,7 @@
     if (name === "duration") {
       if (!d.days || d.days < 1 || d.days > 365) return err("Выбери срок.");
       if (d.type === "habit" && d.days < 21) return err("Для привычки нужно минимум 21 день.");
-      if (d.type === "quit" && d.days < 30) return err("Для отказа нужен срок минимум 30 дней.");
+      if (d.type === "quit" && d.days < 30) return err("Для Аскезы нужен срок минимум 30 дней.");
     }
     if (name === "skipDays") {
       if (!d.allowed_skip_weekdays || !d.allowed_skip_weekdays.length) return err("Выбери хотя бы один день.");
