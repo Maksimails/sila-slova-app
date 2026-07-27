@@ -109,6 +109,10 @@
   .chips-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
   .chips-wrap .chip { flex: 0 0 auto; min-width: 46px; }
   .chip.active-chip { border-color: var(--gold); background: rgba(232,176,75,.15); color: var(--gold2); }
+
+  /* ---------- видео-дуэль в Вызове: своё видео-обещание и видео соперника рядом ---------- */
+  .video-duel { display: grid; gap: 10px; margin-bottom: 4px; }
+  .video-slot-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; text-align: center; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -191,6 +195,10 @@
       const params = new URLSearchParams(location.search);
       const chToken = params.get("challenge");
       if (chToken) { renderChallengeInvite(chToken); return; }
+      // ссылка из бота на уведомлениях "Вызов начался" / "Вызов принят" — сразу открываем
+      // детальный экран нужного вызова, чтобы не заставлять искать его в списке.
+      const viewChallengeId = parseInt(params.get("view_challenge") || "", 10);
+      if (Number.isInteger(viewChallengeId)) { openChallengeDetail(viewChallengeId); return; }
       renderHome();
     } catch (e) {
       app.innerHTML = emptyMsg("Ошибка соединения. Попробуй ещё раз.");
@@ -325,6 +333,10 @@
       '<div class="row"><span>До финиша</span><span>' + left + " дн.</span></div>" +
       '<div class="row"><span>На кону</span><span>' + stakeLine + "</span></div>" +
       '<div class="row"><span>Отчёт сегодня</span><span>' + (b.reported_today ? "✓ отправлен" : "ещё нет") + "</span></div></div>" +
+      (b.video_url
+        ? '<div class="section-title">🎬 Моё видео-обещание</div>' +
+          '<video src="' + escAttr(b.video_url) + '" controls playsinline style="width:100%;aspect-ratio:9/16;object-fit:contain;background:#000;border-radius:12px;display:block;margin-bottom:12px"></video>'
+        : "") +
       (b.stake > 0 && !b.stake_paid ? '<button onclick="payStake(' + b.id + "," + b.stake + ')">Оплатить ' + b.stake + " ⭐</button>" : "") +
       (b.reported_today
         ? '<button class="btn-secondary" disabled style="opacity:.6">Отчёт за сегодня уже отправлен</button>'
@@ -456,6 +468,25 @@
     ctx.selectedChallengeId = id;
     drawChallengeMyDetail();
   };
+  // ---------- видео-дуэль: оба видео-обещания рядом — своё и соперника, если он уже принял ----------
+  // Данные приходят прямо в /challenges-mine (my_video_url + opponent.video_url), отдельного
+  // запроса не нужно. Пока соперник не принял вызов — его слота просто нет, не показываем пустышку.
+  function buildChallengeVideos(c) {
+    const slots = [];
+    if (c.my_video_url) slots.push({ label: "Ты", url: c.my_video_url });
+    if (c.opponent && c.opponent.video_url) slots.push({ label: esc(c.opponent.name), url: c.opponent.video_url });
+    if (!slots.length) return "";
+    const cols = slots.length > 1 ? 2 : 1;
+    const html = slots.map(function (s) {
+      return '<div class="video-slot"><div class="video-slot-label">' + s.label + '</div>' +
+        '<video src="' + escAttr(s.url) + '" controls playsinline style="width:100%;aspect-ratio:9/16;object-fit:contain;background:#000;border-radius:12px;display:block"></video></div>';
+    }).join("");
+    const waitNote = (slots.length === 1 && c.opponent)
+      ? '<div class="muted" style="text-align:center;margin-top:6px;font-size:12.5px">Видео соперника появится, как только он примет вызов.</div>' : "";
+    return '<div class="section-title">🎬 Видео-обещания</div>' +
+      '<div class="video-duel" style="grid-template-columns:repeat(' + cols + ',1fr)">' + html + '</div>' + waitNote;
+  }
+
   function drawChallengeMyDetail() {
     const app = document.getElementById("app");
     const c = (ctx.challenges || []).find(function (x) { return x.id === ctx.selectedChallengeId; });
@@ -484,6 +515,7 @@
       '<div class="row"><span>Пруф</span><span>' + esc(c.proof_format || "") + '</span></div>' +
       '<div class="row"><span>Ставка</span><span>' + (c.stake ? c.stake + ' ⭐' : 'без ставки') + '</span></div>' +
       oppLine + '</div>' +
+      buildChallengeVideos(c) +
       adjBlock + reportBtn + adjustBtn +
       '<div id="adjust-form-holder"></div>' +
       '<div class="section-title">Твои отчёты</div>' +
