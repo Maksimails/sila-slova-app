@@ -282,7 +282,7 @@
       html += '<div class="muted" style="margin:20px 0 10px">⚔ Мои вызовы (' + challenges.length + '):</div>';
       html += challenges.map(function (c) {
         const oppLine = c.opponent
-          ? 'Соперник: ' + esc(c.opponent.name) + (c.status === 'active' ? (c.opponent.reported_today ? ' · отчитался(-ась) сегодня ✓' : ' · ещё не отчитался(-ась) сегодня') : '')
+          ? (c.my_role === 'creator' ? 'Игрок 2 (Принявший)' : 'Игрок 1 (Вызывающий)') + ': ' + esc(c.opponent.name) + (c.status === 'active' ? (c.opponent.reported_today ? ' · отчитался(-ась) сегодня ✓' : ' · ещё не отчитался(-ась) сегодня') : '')
           : 'Ждём соперника';
         return '<div class="bet-card" onclick="openChallengeDetail(' + c.id + ')">' +
           '<div class="top"><div class="goal">' + esc(c.goal) + '</div><div class="badge">⚔ #' + c.id + '</div></div>' +
@@ -353,6 +353,20 @@
   // ---------- история отчётов по конкретной ставке — используется и обычной карточкой, и Вызовом,
   // чтобы клик по ставке в любом из виджетов профиля показывал не только статус, но и что реально
   // отправлялось по дням ----------
+  // отчёт с медиа — судья (соперник в Вызове, или ты сам) должен уметь открыть КАЖДЫЙ день
+  // по отдельности и пересчитать по видео, а не просто увидеть значок "есть фото"; поэтому
+  // каждая строка с media_url кликабельна и разворачивает плеер именно за этот день.
+  function renderReportMedia(rep) {
+    if (rep.media_type === "video") {
+      return '<video src="' + escAttr(rep.media_url) + '" controls playsinline style="width:100%;aspect-ratio:9/16;object-fit:contain;background:#000;border-radius:12px;display:block"></video>';
+    }
+    return '<img src="' + escAttr(rep.media_url) + '" style="width:100%;border-radius:12px;display:block">';
+  }
+  window.toggleReportMedia = function (id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = el.style.display === "none" ? "block" : "none";
+  };
   async function loadBetHistory(betId, elId) {
     elId = elId || "bet-history";
     const el = document.getElementById(elId);
@@ -364,11 +378,18 @@
       const reports = data.reports || [];
       if (!reports.length) { el.textContent = "Пока нет отчётов."; return; }
       el.className = "";
-      el.innerHTML = reports.map(function (rep) {
-        const media = rep.has_photo ? " 📷" : "";
+      el.innerHTML = reports.map(function (rep, idx) {
+        const hasMedia = !!rep.media_url;
+        const mediaId = elId + "-media-" + idx;
+        const icon = hasMedia ? (rep.media_type === "video" ? " 🎬" : " 📷") : (rep.has_photo ? " 📷" : "");
         const text = rep.content ? esc(rep.content) : "(без текста)";
-        return '<div class="row" style="align-items:flex-start"><span>День ' + rep.day + ' · ' + formatRuDate(rep.date) + '</span>' +
-          '<span style="text-align:right">' + text + media + '</span></div>';
+        const viewHint = hasMedia ? ' <span style="color:var(--gold2);font-size:12px;text-decoration:underline">смотреть ▾</span>' : "";
+        const rowAttrs = hasMedia ? ' onclick="toggleReportMedia(\'' + mediaId + '\')" style="cursor:pointer"' : "";
+        return '<div' + rowAttrs + '>' +
+          '<div class="row" style="align-items:flex-start"><span>День ' + rep.day + ' · ' + formatRuDate(rep.date) + '</span>' +
+          '<span style="text-align:right">' + text + icon + viewHint + '</span></div>' +
+          (hasMedia ? '<div id="' + mediaId + '" style="display:none;margin:2px 0 12px">' + renderReportMedia(rep) + '</div>' : '') +
+          '</div>';
       }).join("");
     } catch (e) {
       el.textContent = "Ошибка соединения.";
@@ -468,13 +489,18 @@
     ctx.selectedChallengeId = id;
     drawChallengeMyDetail();
   };
+  // ---------- роли в Вызове: всегда Игрок 1 (Вызывающий, создал вызов) и Игрок 2 (Принявший,
+  // откликнулся на приглашение) — фиксированные ярлыки судейства, а не "я/соперник", чтобы
+  // было видно, кто есть кто, даже если открыть вызов заново через день ----------
+  function challengeRoleLabel(role) { return role === "creator" ? "Игрок 1 · Вызывающий" : "Игрок 2 · Принявший вызов"; }
+  function challengeOtherRole(role) { return role === "creator" ? "invitee" : "creator"; }
   // ---------- видео-дуэль: оба видео-обещания рядом — своё и соперника, если он уже принял ----------
   // Данные приходят прямо в /challenges-mine (my_video_url + opponent.video_url), отдельного
   // запроса не нужно. Пока соперник не принял вызов — его слота просто нет, не показываем пустышку.
   function buildChallengeVideos(c) {
     const slots = [];
-    if (c.my_video_url) slots.push({ label: "Ты", url: c.my_video_url });
-    if (c.opponent && c.opponent.video_url) slots.push({ label: esc(c.opponent.name), url: c.opponent.video_url });
+    if (c.my_video_url) slots.push({ label: challengeRoleLabel(c.my_role) + " · Ты", url: c.my_video_url });
+    if (c.opponent && c.opponent.video_url) slots.push({ label: challengeRoleLabel(challengeOtherRole(c.my_role)) + " · " + esc(c.opponent.name), url: c.opponent.video_url });
     if (!slots.length) return "";
     const cols = slots.length > 1 ? 2 : 1;
     const html = slots.map(function (s) {
@@ -491,7 +517,15 @@
     const app = document.getElementById("app");
     const c = (ctx.challenges || []).find(function (x) { return x.id === ctx.selectedChallengeId; });
     if (!c) { renderHome(); return; }
-    const oppLine = c.opponent ? '<div class="row"><span>Соперник</span><span>' + esc(c.opponent.name) + '</span></div>' : "";
+    const myName = (ctx.user && ctx.user.name) || "Ты";
+    const otherRole = challengeOtherRole(c.my_role);
+    const oppStatusNote = c.opponent && c.status === "active"
+      ? (c.opponent.reported_today ? " · ✓ отчитался(-ась) сегодня" : " · ждём отчёт сегодня")
+      : "";
+    const playersBlock =
+      '<div class="row"><span>' + challengeRoleLabel(c.my_role) + '</span><span>' + esc(myName) + ' (Ты)</span></div>' +
+      '<div class="row"><span>' + challengeRoleLabel(otherRole) + '</span><span>' +
+      (c.opponent ? esc(c.opponent.name) + oppStatusNote : '<span class="muted">ждём соперника</span>') + '</span></div>';
     const reportBtn = (c.status === "active" && c.my_bet_id) ? '<button onclick="sendReport(' + c.my_bet_id + ')">Отправить отчёт</button>' : "";
     const adjustBtn = (c.status === "proposed" && c.my_role && !c.pending_adjustment) ? '<button class="btn-secondary" onclick="showAdjustForm()">Предложить изменения</button>' : "";
     let adjBlock = "";
@@ -514,14 +548,15 @@
       '<div class="row"><span>Срок</span><span>' + c.duration_days + ' дн.</span></div>' +
       '<div class="row"><span>Пруф</span><span>' + esc(c.proof_format || "") + '</span></div>' +
       '<div class="row"><span>Ставка</span><span>' + (c.stake ? c.stake + ' ⭐' : 'без ставки') + '</span></div>' +
-      oppLine + '</div>' +
+      '</div>' +
+      '<div class="card">' + playersBlock + '</div>' +
       buildChallengeVideos(c) +
       adjBlock + reportBtn + adjustBtn +
       '<div id="adjust-form-holder"></div>' +
-      '<div class="section-title">Твои отчёты</div>' +
+      '<div class="section-title">' + challengeRoleLabel(c.my_role) + ' · ' + esc(myName) + ' — отчёты</div>' +
       '<div id="bet-history" class="muted">Загрузка…</div>' +
       (c.opponent && c.opponent.bet_id
-        ? '<div class="section-title">Отчёты соперника</div><div id="bet-history-opp" class="muted">Загрузка…</div>'
+        ? '<div class="section-title">' + challengeRoleLabel(otherRole) + ' · ' + esc(c.opponent.name) + ' — отчёты</div><div id="bet-history-opp" class="muted">Загрузка…</div>'
         : '') +
       '<button class="btn-secondary" onclick="renderHome()">К списку</button>';
     if (c.my_bet_id) loadBetHistory(c.my_bet_id);
