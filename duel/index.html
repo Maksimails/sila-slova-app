@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>ДУЭЛЬ — Сила Слова</title>
+<meta name="description" content="Дуэль с другим или дуэль с собой. Слово на камеру, ставка на кон, отчёт каждый день. Пропустил — проиграл." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --dark: #08090b; --dark2: #0e0f13; --ink: #f5f5f7; --muted: #8a8d97;
+    --gold: #e8b04b; --gold-deep: #b8790f; --gold-soft: rgba(232,176,75,.12);
+    --crimson: #e14b3f; --crimson-deep: #8f261d; --crimson-soft: rgba(225,75,63,.12);
+    --line: #212228;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--dark); color: var(--ink); font-family: 'Manrope', -apple-system, sans-serif;
+    overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  b, strong { font-weight: 800; }
+  .gold { color: var(--gold); }
+  .red { color: var(--crimson); }
+  .muted { color: var(--muted); }
+
+  /* ---------- top bar ---------- */
+  .bar { position: fixed; top: 0; left: 0; right: 0; z-index: 50; display: flex; align-items: center;
+    justify-content: space-between; padding: 16px 20px; font-weight: 800; font-size: 14px; letter-spacing: .02em;
+    pointer-events: none; }
+  .bar a { pointer-events: auto; }
+  .bar .brand { opacity: .85; text-decoration: none; }
+  .bar .back { font-size: 12.5px; font-weight: 700; color: var(--muted); text-decoration: none; opacity: .8; }
+  .dots { position: fixed; right: 16px; top: 50%; transform: translateY(-50%); z-index: 50; display: flex;
+    flex-direction: column; gap: 8px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #35363d; transition: all .25s ease; }
+  .dot.active { background: var(--gold); height: 20px; border-radius: 4px; }
+
+  /* ---------- snap scroller ---------- */
+  .scroller { height: 100vh; height: 100dvh; overflow-y: auto; scroll-snap-type: y mandatory; scrollbar-width: none; }
+  .scroller::-webkit-scrollbar { display: none; }
+  .slide { min-height: 100vh; min-height: 100dvh; scroll-snap-align: start; scroll-snap-stop: always;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+    padding: 90px 26px 60px; position: relative; overflow: hidden; }
+
+  .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; letter-spacing: .18em;
+    text-transform: uppercase; font-size: 11.5px; color: var(--gold); margin-bottom: 22px; }
+  .eyebrow::before, .eyebrow::after { content: ""; width: 14px; height: 1.5px; background: var(--gold); }
+
+  .statement { font-size: clamp(30px, 9vw, 56px); font-weight: 800; line-height: 1.08; letter-spacing: -.01em;
+    max-width: 720px; }
+  .statement .en { display: block; font-size: clamp(13px, 3vw, 16px); font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .lede { margin: 22px auto 0; font-size: clamp(15px, 3vw, 18px); color: var(--muted); max-width: 460px; line-height: 1.6; }
+
+  .scrolldown { position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%); font-size: 11px;
+    color: var(--muted); letter-spacing: .1em; text-transform: uppercase; display: flex; flex-direction: column;
+    align-items: center; gap: 6px; opacity: .7; }
+  .scrolldown span { width: 1px; height: 26px; background: linear-gradient(var(--muted), transparent);
+    animation: down 1.6s ease-in-out infinite; }
+  @keyframes down { 0% { opacity: 0; transform: translateY(-6px); } 50% { opacity: 1; } 100% { opacity: 0; transform: translateY(10px); } }
+
+  .reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s ease, transform .7s ease; }
+  .reveal.in { opacity: 1; transform: translateY(0); }
+  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
+
+  /* ---------- hero ---------- */
+  .hero { background: radial-gradient(ellipse 70% 50% at 50% 20%, rgba(232,176,75,.14), transparent 65%); }
+  .hero .word { font-size: clamp(58px, 22vw, 150px); font-weight: 800; line-height: .92; letter-spacing: -.02em;
+    background: linear-gradient(180deg, #fff, #b8b9c2); -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; }
+  .hero .word i { font-style: normal; color: var(--crimson); -webkit-text-fill-color: var(--crimson); }
+  .hero .sub { margin-top: 18px; font-size: clamp(15px, 3.4vw, 19px); color: var(--muted); max-width: 420px; line-height: 1.55; }
+  .live { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: #131418;
+    border-radius: 30px; padding: 7px 15px; font-size: 12px; color: #c9cad2; margin-top: 30px; }
+  .live .dot2 { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 8px var(--gold);
+    animation: pulse 1.8s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+
+  /* ---------- choose your duel ---------- */
+  .choose { padding: 0; }
+  .choose-title { position: absolute; top: 90px; left: 0; right: 0; text-align: center; z-index: 3; }
+  .choose-title .statement { font-size: clamp(22px, 6vw, 34px); }
+  .split { width: 100%; height: 100%; position: absolute; inset: 0; display: flex; flex-direction: column; }
+  @media (min-width: 760px) { .split { flex-direction: row; } }
+  .half { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 130px 24px 40px; text-decoration: none; position: relative;
+    transition: flex-grow .25s ease, filter .25s ease; }
+  .half:active { filter: brightness(1.12); }
+  .half.vs { background: linear-gradient(160deg, #1c0f0d, var(--dark2)); border-bottom: 1px solid var(--line); }
+  .half.self { background: linear-gradient(160deg, #1a160a, var(--dark2)); }
+  @media (min-width: 760px) { .half.vs { border-bottom: none; border-right: 1px solid var(--line); } }
+  .half .tag { font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; margin-bottom: 14px; }
+  .half.vs .tag { color: var(--crimson); }
+  .half.self .tag { color: var(--gold); }
+  .half h3 { font-size: clamp(24px, 6vw, 36px); font-weight: 800; margin: 0 0 12px; line-height: 1.05; }
+  .half p { margin: 0; color: var(--muted); font-size: 14px; max-width: 260px; line-height: 1.55; }
+  .half .go { margin-top: 20px; font-size: 12.5px; font-weight: 800; letter-spacing: .04em; display: inline-flex;
+    align-items: center; gap: 6px; }
+  .half.vs .go { color: var(--crimson); }
+  .half.self .go { color: var(--gold); }
+  .vsbadge { position: absolute; z-index: 4; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    width: 46px; height: 46px; border-radius: 50%; background: var(--dark); border: 1.5px solid var(--line);
+    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; color: var(--muted); }
+
+  /* ---------- rules ---------- */
+  .rules-list { text-align: left; max-width: 420px; margin: 30px auto 0; width: 100%; }
+  .rule { display: flex; gap: 16px; align-items: flex-start; padding: 16px 0; border-bottom: 1px solid var(--line); }
+  .rule:last-child { border-bottom: none; }
+  .rule .n { flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; background: var(--gold-soft);
+    color: var(--gold); font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .rule b { display: block; font-size: 16.5px; margin-bottom: 2px; }
+  .rule span { color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+
+  /* ---------- stakes / mock UI ---------- */
+  .mock { margin: 32px auto 0; max-width: 320px; width: 100%; background: #131418; border: 1px solid var(--line);
+    border-radius: 18px; padding: 20px; text-align: left; }
+  .mock-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; }
+  .mock-row + .mock-row { border-top: 1px solid var(--line); }
+  .mock-label { font-size: 12.5px; color: var(--muted); font-weight: 700; }
+  .mock-val { font-size: 14.5px; font-weight: 800; }
+  .mock-bar { height: 6px; border-radius: 4px; background: #24252c; overflow: hidden; margin-top: 8px; }
+  .mock-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold-deep), var(--gold)); }
+
+  /* ---------- buttons ---------- */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none;
+    padding: 17px 30px; border-radius: 14px; font-weight: 800; font-size: 16px; letter-spacing: -.005em; }
+  .btn-gold { background: linear-gradient(135deg, var(--gold), #cc9530); color: #1a1200;
+    box-shadow: 0 14px 30px -12px rgba(232,176,75,.55); }
+  .fine { margin-top: 18px; font-size: 12px; color: #5c5e66; letter-spacing: .03em; }
+
+  footer { text-align: center; padding: 30px 20px 40px; font-size: 12px; color: #55565d; }
+  footer a { color: var(--gold); text-decoration: none; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <a class="brand" href="#top">⚔️ СИЛА СЛОВА</a>
+  <a class="back" href="https://maksimails.github.io/sila-slova-app/landing/">Обычный сайт →</a>
+</div>
+<div class="dots" id="dots"></div>
+
+<div class="scroller" id="scroller">
+
+  <!-- 1. HERO -->
+  <section class="slide hero" id="top">
+    <div class="eyebrow">Сила Слова</div>
+    <div class="word reveal">ЭТО<br><i>ДУЭЛЬ</i></div>
+    <div class="sub reveal">Не марафон. Не челлендж. Не мотивация на подписке.<br>Дуэль — либо ты держишь слово, либо все узнают, что нет.</div>
+    <div class="live reveal"><span class="dot2"></span> Живые ставки прямо сейчас</div>
+    <div class="scrolldown"><span></span>вниз</div>
+  </section>
+
+  <!-- 2. STATEMENT -->
+  <section class="slide">
+    <div class="statement reveal"><span class="en">Fact</span>У тебя есть слово.</div>
+    <div class="lede reveal">Вопрос всего один — <b class="gold">умеет ли оно стрелять</b>, или это просто звук.</div>
+  </section>
+
+  <!-- 3. STATEMENT -->
+  <section class="slide">
+    <div class="statement reveal">Слился —<br><span class="red">все увидят.</span></div>
+    <div class="lede reveal">Держал — тоже. Разницы, спрятаться ли за спиной, здесь нет.</div>
+  </section>
+
+  <!-- 4. CHOOSE YOUR DUEL -->
+  <section class="slide choose" id="choose">
+    <div class="choose-title">
+      <div class="eyebrow">Выбери дуэль</div>
+    </div>
+    <div class="split">
+      <a class="half vs" href="https://t.me/Tvoya_Sila_Slova_Bot?start=duel_vs" target="_blank" rel="noopener">
+        <div class="tag">Duel with someone</div>
+        <h3>Вызови<br>на дуэль</h3>
+        <p>Находишь соперника. Оба ставите слово на кон. Кто сломался первым — проиграл.</p>
+        <div class="go">Вызвать →</div>
+      </a>
+      <a class="half self" href="https://t.me/Tvoya_Sila_Slova_Bot?start=duel_self" target="_blank" rel="noopener">
+        <div class="tag">Duel with yourself</div>
+        <h3>Дуэль<br>с собой</h3>
+        <p>Единственный соперник — твоя слабость. Судья — камера. Свидетель — ты сам.</p>
+        <div class="go">Начать →</div>
+      </a>
+    </div>
+    <div class="vsbadge">VS</div>
+  </section>
+
+  <!-- 5. RULES -->
+  <section class="slide">
+    <div class="eyebrow reveal">Правила дуэли</div>
+    <div class="rules-list reveal">
+      <div class="rule"><div class="n">1</div><div><b>Слово на камеру.</b><span>«Я даю слово, что…» — вслух, лицом к линзе.</span></div></div>
+      <div class="rule"><div class="n">2</div><div><b>Ставка на кон.</b><span>Деньги, репутация или обещание другу — выбираешь сам.</span></div></div>
+      <div class="rule"><div class="n">3</div><div><b>Отчёт каждый день.</b><span>Без выходных, без «завтра точно».</span></div></div>
+      <div class="rule"><div class="n">4</div><div><b>Пропустил — проиграл.</b><span>Без запасных дней. Поэтому и работает.</span></div></div>
+    </div>
+  </section>
+
+  <!-- 6. STAKES / MOCK -->
+  <section class="slide">
+    <div class="statement reveal">На кону<br>не деньги.<br><span class="gold">На кону — ты.</span></div>
+    <div class="mock reveal">
+      <div class="mock-row"><span class="mock-label">Доверие</span><span class="mock-val gold">100%</span></div>
+      <div class="mock-bar"><i style="width:100%"></i></div>
+      <div class="mock-row"><span class="mock-label">Серия дней</span><span class="mock-val">0 → ∞</span></div>
+      <div class="mock-row"><span class="mock-label">Статус</span><span class="mock-val red">Слово не проверено</span></div>
+    </div>
+  </section>
+
+  <!-- 7. FINAL CTA -->
+  <section class="slide">
+    <div class="eyebrow reveal">Готов?</div>
+    <div class="statement reveal">Дай слово.<br>Прямо сейчас.</div>
+    <a class="btn btn-gold reveal" style="margin-top:34px" href="https://t.me/Tvoya_Sila_Slova_Bot?start=duel_cta" target="_blank" rel="noopener">Начать дуэль в Telegram</a>
+    <div class="fine reveal">Открывается в Telegram · 30 секунд на старт</div>
+    <footer>Сила Слова · Дуэль · <a href="https://t.me/Tvoya_Sila_Slova_Bot" target="_blank" rel="noopener">@Tvoya_Sila_Slova_Bot</a></footer>
+  </section>
+
+</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const dotsEl = document.getElementById('dots');
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    dotsEl.appendChild(d);
+  });
+  const dots = Array.from(dotsEl.children);
+
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (e.isIntersecting) {
+        e.target.querySelectorAll('.reveal').forEach((el, i) => {
+          setTimeout(() => el.classList.add('in'), i * 90);
+        });
+        const idx = slides.indexOf(e.target);
+        dots.forEach((d, j) => d.classList.toggle('active', j === idx));
+      }
+    });
+  }, { threshold: 0.5 });
+  slides.forEach((s) => io.observe(s));
+
+  dots.forEach((d, i) => {
+    d.style.cursor = 'pointer';
+    d.addEventListener('click', () => slides[i].scrollIntoView({ behavior: 'smooth' }));
+  });
+</script>
+
+</body>
+</html>
