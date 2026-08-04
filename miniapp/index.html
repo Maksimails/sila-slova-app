@@ -156,6 +156,12 @@
   function emptyMsg(t) { return '<div class="empty">' + t + "</div>"; }
   function closeApp() { tg?.close(); }
   window.closeApp = closeApp;
+  function openGroup() {
+    const url = "https://t.me/tvoya_sila_slova";
+    if (tg && typeof tg.openTelegramLink === "function") tg.openTelegramLink(url);
+    else window.open(url, "_blank");
+  }
+  window.openGroup = openGroup;
 
   async function api(path, opts) {
     opts = opts || {};
@@ -219,7 +225,7 @@
 
   function footerNav() {
     const bellBadge = ctx.unreadCount > 0 ? '<span style="background:#c0392f;color:#fff;border-radius:10px;padding:1px 6px;font-size:11px;margin-left:4px">' + ctx.unreadCount + '</span>' : '';
-    return '<div class="footer-nav"><a onclick="renderNotifications()">🔔 Уведомления' + bellBadge + '</a><a onclick="renderProfile()">👤 Профиль</a><a onclick="showInfo()">Как это работает</a><a onclick="closeApp()">Поддержка — в чате</a></div>';
+    return '<div class="footer-nav"><a onclick="renderNotifications()">🔔 Уведомления' + bellBadge + '</a><a onclick="renderProfile()">👤 Профиль</a><a onclick="openGroup()">👥 Наша группа</a><a onclick="showInfo()">Как это работает</a><a onclick="closeApp()">Поддержка — в чате</a></div>';
   }
 
   // ---------- экран уведомлений ----------
