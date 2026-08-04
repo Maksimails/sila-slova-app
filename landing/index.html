@@ -1,731 +1,975 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Сила Слова — платформа, где слово имеет цену</title>
-<meta name="description" content="Дай слово на камеру. Поставь на кон то, что дорого. Отчитывайся каждый день перед ИИ-наставником или свидетелем. Держи — или все узнают, чего оно стоило." />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Сила слова — дал слово, сдержи его</title>
+<meta name="description" content="Платформа, которая помогает доводить начатое до конца: ставь деньги на свою цель, выполни обещание и верни их обратно.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #ffffff; --bg-soft: #f6f6f7; --ink: #111114; --muted: #6c6f78; --line: #e6e6e9;
-    --gold: #b8790f; --gold-bg: #e8b04b; --gold-soft: #fbeed7;
-    --crimson: #c0392f; --teal: #1c8c6c;
-    --dark: #0c0d10;
+  :root{
+    --forest-900:#1c2718;
+    --forest-800:#26331f;
+    --forest-700:#33452a;
+    --forest-600:#425939;
+    --forest-500:#54704a;
+    --olive-400:#8a9a5b;
+    --olive-300:#a7b47f;
+    --cream-100:#faf6ec;
+    --cream-200:#f3ecda;
+    --cream-300:#e9dfc4;
+    --sand-400:#d9c9a3;
+    --ink:#1e2418;
+    --ember:#c0663a;
+    --sun-300:#ffd27a;
+    --sun-400:#f4b942;
+    --sun-500:#e0972a;
+    --white:#ffffff;
+    --radius-lg:28px;
+    --radius-md:18px;
+    --radius-sm:12px;
+    --shadow-soft:0 20px 50px -25px rgba(28,39,24,0.35);
+    --shadow-card:0 12px 30px -18px rgba(28,39,24,0.28);
   }
-  * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Manrope', -apple-system, sans-serif;
-    overflow-x: hidden; -webkit-font-smoothing: antialiased; }
-  .wrap { max-width: 800px; margin: 0 auto; padding: 0 22px; }
-  .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
-    font-size: 12px; color: var(--gold); margin-bottom: 16px; }
-  .eyebrow::before { content: ""; width: 16px; height: 2px; background: var(--gold); display: inline-block; }
-  .sec-dark .eyebrow { color: var(--gold-bg); }
-  .sec-dark .eyebrow::before { background: var(--gold-bg); }
-  h1, h2, h3 { font-family: 'Manrope', sans-serif; margin: 0; letter-spacing: -.01em; }
-  .muted { color: var(--muted); }
-  a { color: inherit; }
-  strong.hl { color: var(--gold); font-weight: 800; }
-  .sec-dark strong.hl { color: var(--gold-bg); }
-  strong.hl-red { color: var(--crimson); font-weight: 800; }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    font-family:'Manrope', sans-serif;
+    color:var(--ink);
+    background:var(--cream-100);
+    line-height:1.55;
+    overflow-x:hidden;
+  }
+  h1,h2,h3,h4{
+    font-family:'Unbounded', sans-serif;
+    line-height:1.18;
+    letter-spacing:-0.01em;
+    color:var(--forest-900);
+  }
+  a{color:inherit; text-decoration:none;}
+  img{max-width:100%; display:block;}
+  .wrap{max-width:1180px; margin:0 auto; padding:0 24px;}
+  section{position:relative;}
 
-  /* ---------- nav ---------- */
-  header { position: sticky; top: 0; z-index: 60; background: rgba(255,255,255,.86); backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--line); }
-  .nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 22px; max-width: 1000px; margin: 0 auto; }
-  .logo { font-weight: 800; font-size: 18px; letter-spacing: -.01em; text-decoration: none; display: inline-flex; align-items: baseline; gap: 8px; }
-  .logo-tag { font-weight: 600; font-size: 12.5px; color: var(--muted); letter-spacing: 0; display: none; }
-  @media (min-width: 560px) { .logo-tag { display: inline; } }
-  .nav-links { display: none; gap: 20px; font-weight: 600; font-size: 14px; }
-  .nav-links a { text-decoration: none; color: var(--ink); opacity: .75; }
-  .nav-links a:hover { opacity: 1; }
-  .nav-cta { display: none; }
-  .nav-right { display: flex; align-items: center; gap: 14px; }
-  .burger { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: none; display: flex;
-    flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; }
-  .burger span { width: 16px; height: 2px; background: var(--ink); display: block; }
-  .mnav { display: none; position: fixed; inset: 0 0 auto 0; top: 65px; background: #fff; z-index: 59; border-bottom: 1px solid var(--line);
-    padding: 10px 22px 24px; flex-direction: column; gap: 2px; }
-  .mnav.open { display: flex; }
-  .mnav a { text-decoration: none; color: var(--ink); font-weight: 700; font-size: 16px; padding: 13px 4px; border-bottom: 1px solid var(--line); }
-  .mnav a:last-child { border-bottom: none; }
+  /* ---------- Buttons ---------- */
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:10px;
+    padding:15px 28px; border-radius:100px; font-weight:700; font-size:16px;
+    border:none; cursor:pointer; transition:transform .2s ease, box-shadow .2s ease, background .2s ease;
+    white-space:nowrap;
+  }
+  .btn-primary{
+    background:linear-gradient(135deg, var(--forest-600), var(--forest-800));
+    color:var(--cream-100);
+    box-shadow:0 14px 30px -12px rgba(38,51,31,0.55);
+  }
+  .btn-primary:hover{
+    background:linear-gradient(135deg, var(--sun-300), var(--sun-400));
+    color:var(--forest-900);
+    transform:translateY(-2px);
+    box-shadow:0 16px 32px -12px rgba(224,151,42,0.55);
+  }
+  .btn-ghost{
+    background:var(--white); color:var(--forest-800);
+    border:1.5px solid var(--cream-300);
+  }
+  .btn-ghost:hover{
+    background:linear-gradient(135deg, var(--sun-300), var(--sun-400));
+    border-color:var(--sun-400); color:var(--forest-900); transform:translateY(-2px);
+  }
+  .btn-outline-light{
+    background:transparent; color:var(--cream-100); border:1.5px solid rgba(250,246,236,0.5);
+  }
+  .btn-outline-light:hover{
+    background:linear-gradient(135deg, var(--sun-300), var(--sun-400));
+    border-color:var(--sun-400); color:var(--forest-900); transform:translateY(-2px);
+  }
+  .btn-block{width:100%;}
+  .btn-disabled{
+    background:var(--cream-300); color:#8a8470; cursor:not-allowed; box-shadow:none;
+  }
+  .btn-disabled:hover{transform:none;}
+  .btn-sm{padding:11px 20px; font-size:14px;}
 
-  /* ---------- buttons ---------- */
-  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; padding: 15px 24px;
-    border-radius: 13px; font-weight: 700; font-size: 15.5px; letter-spacing: -.005em; border: none; cursor: pointer; }
-  .btn-gold { background: linear-gradient(135deg, var(--gold-bg), #cc9530); color: #1a1200; box-shadow: 0 10px 26px -10px rgba(184,121,15,.55); }
-  .btn-outline { background: transparent; border: 1.5px solid var(--line); color: var(--ink); }
-  .sec-dark .btn-outline { border-color: #33343a; color: #fff; }
-  .btn-block { width: 100%; }
-  .btn-row { display: flex; flex-direction: column; gap: 12px; }
+  /* ---------- Header ---------- */
+  header{
+    position:sticky; top:0; z-index:100;
+    background:rgba(250,246,236,0.85);
+    backdrop-filter:blur(14px);
+    border-bottom:1px solid rgba(28,39,24,0.06);
+  }
+  .nav{display:flex; align-items:center; justify-content:space-between; padding:10px 24px;}
+  .logo{display:flex; align-items:center; gap:14px; font-family:'Unbounded'; font-weight:700; font-size:19px; color:var(--forest-900);}
+  .logo .mark{width:58px; height:58px; border-radius:50%; overflow:hidden; flex-shrink:0;}
+  .logo .mark img{width:100%; height:100%; object-fit:cover; object-position:center 38%; transform:scale(1.85); display:block;}
+  .logo .tagline{display:block; font-family:'Manrope'; font-weight:500; font-size:11px; color:var(--forest-600); letter-spacing:.02em;}
+  .nav-links{display:flex; align-items:center; gap:32px; font-weight:600; font-size:14.5px; color:var(--forest-700);}
+  .nav-links a{opacity:.85; transition:opacity .2s;}
+  .nav-links a:hover{opacity:1;}
+  .nav-actions{display:flex; align-items:center; gap:14px;}
+  .burger{display:none; flex-direction:column; gap:5px; background:none; border:none; cursor:pointer; padding:8px;}
+  .burger span{width:24px; height:2px; background:var(--forest-900); border-radius:2px;}
+  .mobile-menu{display:none; flex-direction:column; gap:2px; padding:12px 24px 20px; border-top:1px solid rgba(28,39,24,0.06);}
+  .mobile-menu a{padding:12px 0; font-weight:600; color:var(--forest-800); border-bottom:1px solid rgba(28,39,24,0.06);}
 
-  /* ---------- sections ---------- */
-  section.sec { padding: 84px 0; }
-  .sec-soft { background: var(--bg-soft); }
-  .sec-dark { background: var(--dark); color: #f2f2f4; }
-  .sec-dark .muted { color: #9a9ca6; }
-  .section-title { font-size: clamp(26px, 6vw, 36px); line-height: 1.22; font-weight: 800; margin-bottom: 16px; }
-  .section-lead { color: var(--muted); font-size: 16.5px; line-height: 1.6; max-width: 560px; }
-  .sec-dark .section-lead { color: #b7b9c2; }
-  .center { text-align: center; }
-  .center .section-lead { margin-left: auto; margin-right: auto; }
+  /* ---------- Hero ---------- */
+  .hero{
+    position:relative; min-height:88vh; display:flex; align-items:center;
+    overflow:hidden; padding:120px 0 80px;
+  }
+  .hero > .wrap{width:100%;}
+  .hero-bg{position:absolute; inset:0; z-index:0;}
+  .hero-bg img{
+    width:100%; height:100%; object-fit:cover; object-position:78% 42%; display:block;
+  }
+  .hero-bg::after{
+    content:''; position:absolute; inset:0;
+    background:
+      linear-gradient(180deg, rgba(20,27,16,0.15) 0%, rgba(20,27,16,0.05) 40%, rgba(20,27,16,0.35) 80%, rgba(20,27,16,0.6) 100%),
+      linear-gradient(90deg, rgba(22,29,17,0.95) 0%, rgba(22,29,17,0.8) 26%, rgba(22,29,17,0.4) 44%, rgba(22,29,17,0.08) 62%, rgba(22,29,17,0) 72%);
+  }
+  .hero-content{position:relative; z-index:1; max-width:470px; text-align:left;}
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px; padding:8px 16px; border-radius:100px;
+    background:rgba(250,246,236,0.14); border:1px solid rgba(250,246,236,0.25); backdrop-filter:blur(6px);
+    color:var(--cream-100); font-weight:700; font-size:13px; margin-bottom:22px;
+  }
+  .eyebrow .dot{width:7px; height:7px; border-radius:50%; background:var(--ember);}
+  .hero h1{font-size:39px; line-height:1.22; margin-bottom:18px; color:var(--cream-100); text-shadow:0 4px 24px rgba(0,0,0,0.35);}
+  .hero h1 .accent{color:var(--olive-300); position:relative;}
+  .hero-sub{font-size:16.5px; color:rgba(250,246,236,0.9); max-width:420px; margin-bottom:32px; text-shadow:0 2px 12px rgba(0,0,0,0.25);}
+  .hero-ctas{display:flex; flex-wrap:wrap; gap:14px;}
 
-  /* ---------- reveal animation ---------- */
-  .reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s ease; }
-  .reveal.in { opacity: 1; transform: translateY(0); }
-  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
+  /* ---------- Section headers ---------- */
+  .section-pad{padding:88px 0;}
+  .section-head{max-width:640px; margin:0 auto 48px; text-align:center;}
+  .section-head h2{font-size:32px; margin-bottom:12px;}
+  .section-head p{color:#5a6250; font-size:16px;}
+  .section-tag{
+    display:inline-block; font-weight:700; font-size:12.5px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--forest-500); margin-bottom:12px;
+  }
 
-  /* ---------- hero ---------- */
-  .hero { padding: 54px 0 70px; text-align: center; position: relative; overflow: hidden; }
-  .hero::before { content: ""; position: absolute; inset: 0; z-index: 0;
-    background: radial-gradient(ellipse 60% 45% at 50% 10%, rgba(232,176,75,.16), transparent 70%); }
-  .hero > * { position: relative; z-index: 1; }
-  .live-badge { display: inline-flex; align-items: center; gap: 8px; border: 1px solid #2a2c33; background: #16171b;
-    border-radius: 30px; padding: 8px 16px; font-size: 12.5px; color: #cfd1d8; margin-bottom: 28px; }
-  .live-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold-bg); box-shadow: 0 0 8px var(--gold-bg);
-    animation: pulse 1.8s ease-in-out infinite; }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
-  .hero h1 { font-size: clamp(38px, 11vw, 64px); font-weight: 800; line-height: 1.05; }
-  .hero .stat { display: block; font-size: clamp(56px, 17vw, 108px); color: var(--gold-bg); font-weight: 800; line-height: 1; margin: 6px 0; }
-  .hero .sub { margin: 26px auto 0; font-size: clamp(16px, 3vw, 18.5px); color: #b7b9c2; max-width: 480px; line-height: 1.6; }
-  .hero .cta-row { margin-top: 36px; max-width: 340px; margin-left: auto; margin-right: auto; }
-  .hero .fine { margin-top: 20px; font-size: 12.5px; color: #6f7178; letter-spacing: .04em; }
+  /* ---------- Problems ---------- */
+  .problems-bg{background:var(--forest-900); color:var(--cream-100);}
+  .problems-bg .section-head h2{color:var(--cream-100);}
+  .problems-bg .section-head p{color:rgba(250,246,236,0.65);}
+  .problems-bg .section-tag{color:var(--olive-300);}
+  .problem-grid{display:grid; grid-template-columns:repeat(5,1fr); gap:18px;}
+  .problem-card{
+    position:relative; text-align:center;
+    background:rgba(250,246,236,0.05); border:1px solid rgba(250,246,236,0.12);
+    border-radius:var(--radius-md); padding:38px 20px 26px; transition:transform .25s, background .25s;
+  }
+  .problem-card:hover{transform:translateY(-6px); background:rgba(250,246,236,0.09);}
+  .problem-card:hover .p-icon{transform:scale(1.08) rotate(-4deg);}
+  .problem-card .p-num{
+    position:absolute; top:14px; right:16px; font-family:'Unbounded'; font-weight:700; font-size:11px;
+    color:rgba(250,246,236,0.28); letter-spacing:.04em;
+  }
+  .problem-card .p-icon-row{display:flex; align-items:center; justify-content:center; margin-bottom:20px;}
+  .problem-card .p-icon{
+    width:72px; height:72px; border-radius:20px;
+    background:linear-gradient(140deg, var(--sun-300), var(--sun-400) 50%, var(--sun-500));
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 14px 30px -8px rgba(244,185,66,0.55), 0 4px 12px -4px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.4);
+    transition:transform .3s ease;
+  }
+  .problem-card .p-icon svg{width:36px; height:36px; stroke:var(--forest-900); fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round;}
+  .problem-card h4{text-align:center;}
+  .problem-card .fix-label{text-align:center;}
+  .problem-card p{text-align:center;}
+  .problem-card h4{color:var(--cream-100); font-size:15.5px; margin-bottom:10px;}
+  .problem-card .fix-label{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--olive-300); font-weight:700; margin-bottom:4px; margin-top:14px;}
+  .problem-card p{font-size:13.5px; color:rgba(250,246,236,0.68);}
+  .problems-callout{
+    margin-top:44px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:20px;
+  }
+  .problems-callout p{font-family:'Unbounded'; font-size:19px; font-weight:600; max-width:560px; color:var(--cream-100);}
 
-  /* ---------- generic cards / grid ---------- */
-  .grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
-  .card { border: 1px solid var(--line); border-radius: 18px; padding: 22px; background: #fff; }
-  .sec-dark .card { border-color: #26272d; background: #17181c; }
-  .sec-soft .card { background: #fff; }
-  .card h3 { font-size: 18px; margin-bottom: 8px; font-weight: 800; }
-  .card p { margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.6; }
-  .card .tag { display: inline-block; font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em;
-    color: var(--gold); background: var(--gold-soft); border-radius: 8px; padding: 4px 9px; margin-bottom: 12px; }
+  /* ---------- Formats ---------- */
+  .format-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:24px;}
+  .format-card{
+    border-radius:var(--radius-lg); overflow:hidden; background:var(--white); box-shadow:var(--shadow-card);
+    display:flex; flex-direction:column; position:relative; transition:transform .25s;
+  }
+  .format-card:hover{transform:translateY(-6px);}
+  .format-visual{aspect-ratio:4/3; position:relative; overflow:hidden;}
+  .format-visual svg, .format-visual img{width:100%; height:100%; object-fit:cover; object-position:50% 15%; display:block; transition:transform .4s ease;}
+  .format-card:hover .format-visual img{transform:scale(1.04);}
+  .format-ribbon{
+    position:absolute; top:14px; right:14px; background:var(--ember); color:var(--cream-100);
+    font-size:11px; font-weight:700; padding:6px 12px; border-radius:100px; letter-spacing:.03em;
+  }
+  .format-body{padding:22px; display:flex; flex-direction:column; gap:14px; flex:1;}
+  .format-body h3{font-size:18px;}
+  .format-body p{font-size:14px; color:#5a6250; flex:1;}
 
-  /* numbered step */
-  .step { display: flex; gap: 16px; align-items: flex-start; }
-  .step .num { flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; background: var(--gold-soft); color: var(--gold);
-    font-weight: 800; font-size: 16px; display: flex; align-items: center; justify-content: center; }
-  .sec-dark .step .num { background: #26221a; color: var(--gold-bg); }
-  .step b { display: block; font-size: 16.5px; margin-bottom: 4px; }
-  .step p { margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.6; }
+  /* ---------- How it works: roadmap ---------- */
+  .roadmap{position:relative; max-width:720px; margin:0 auto;}
+  .roadmap-step{display:grid; grid-template-columns:56px 1fr; gap:24px; padding-bottom:8px;}
+  .roadmap-node{display:flex; flex-direction:column; align-items:center;}
+  .roadmap-node .dot{
+    width:56px; height:56px; border-radius:50%; flex-shrink:0; position:relative; z-index:1;
+    background:linear-gradient(135deg, var(--forest-600), var(--forest-800));
+    display:flex; align-items:center; justify-content:center; font-size:23px;
+    box-shadow:0 10px 22px -9px rgba(28,39,24,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
+  }
+  .roadmap-node .line{width:2px; flex:1; min-height:24px; margin:4px 0; background:repeating-linear-gradient(180deg, var(--olive-400) 0 6px, transparent 6px 12px);}
+  .roadmap-card{
+    background:var(--white); border-radius:var(--radius-md); padding:20px 24px 22px; box-shadow:var(--shadow-card);
+    margin-bottom:30px;
+  }
+  .roadmap-card .step-tag{
+    display:inline-block; font-family:'Unbounded'; font-weight:700; font-size:11px; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--olive-500, var(--forest-500)); margin-bottom:6px;
+  }
+  .roadmap-card h4{font-size:16.5px; margin-bottom:6px;}
+  .roadmap-card p{font-size:14px; color:#5a6250;}
+  .fork-step{padding-bottom:0;}
+  .fork-step .dot{background:linear-gradient(135deg, var(--sun-400), var(--sun-500)); color:var(--forest-900); box-shadow:0 10px 22px -8px rgba(224,151,42,0.55);}
+  .fork-lead{font-size:14.5px; font-weight:700; color:var(--forest-800); margin-bottom:16px;}
+  .fork-cards{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  .fork-card{border-radius:var(--radius-md); padding:22px 22px; box-shadow:var(--shadow-card); position:relative;}
+  .fork-card .fork-ic{width:38px; height:38px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:17px; margin-bottom:12px;}
+  .fork-card h4{font-size:15.5px; margin-bottom:6px;}
+  .fork-card p{font-size:13px;}
+  .fork-card.success{background:var(--forest-900); color:var(--cream-100);}
+  .fork-card.success h4{color:var(--cream-100);}
+  .fork-card.success p{color:rgba(250,246,236,0.65);}
+  .fork-card.success .fork-ic{background:rgba(250,246,236,0.12); color:var(--olive-300);}
+  .fork-card.fail{background:#f4e3da;}
+  .fork-card.fail h4{color:var(--forest-900);}
+  .fork-card.fail p{color:#7a6a54;}
+  .fork-card.fail .fork-ic{background:rgba(192,102,58,0.15); color:var(--ember);}
 
-  /* ---------- журнал перемен: полноэкранные слайды-утверждения сразу после hero ---------- */
-  .journey { height: 100vh; overflow-y: auto; scroll-snap-type: y mandatory; background: var(--dark);
-    position: relative; scrollbar-width: none; }
-  .journey::-webkit-scrollbar { display: none; }
-  .j-slide { height: 100vh; scroll-snap-align: start; scroll-snap-stop: always; display: flex;
-    align-items: center; justify-content: center; text-align: center; padding: 40px 26px; position: relative;
-    overflow: hidden; }
-  .j-slide::before { content: ""; position: absolute; inset: 0; z-index: 0; opacity: .55;
-    background: radial-gradient(ellipse 65% 50% at 50% 45%, var(--j-glow, rgba(232,176,75,.14)), transparent 72%); }
-  .j-slide.pain { --j-glow: rgba(192,57,47,.16); }
-  .j-slide.pivot, .j-slide.duel, .j-slide.together { --j-glow: rgba(232,176,75,.2); }
-  .j-inner { position: relative; z-index: 1; max-width: 720px; }
-  .j-emoji { font-size: clamp(30px, 7vw, 44px); display: block; margin-bottom: 20px;
-    opacity: 0; transform: scale(.6); transition: opacity .5s ease .05s, transform .5s ease .05s; }
-  .j-text { font-size: clamp(27px, 7.2vw, 50px); font-weight: 800; line-height: 1.24; color: #f4f4f6;
-    opacity: 0; transform: translateY(22px); transition: opacity .65s ease, transform .65s ease; }
-  .j-slide.in .j-emoji { opacity: 1; transform: scale(1); }
-  .j-slide.in .j-text { opacity: 1; transform: translateY(0); }
-  .j-text strong.hl, .j-text strong.hl-red { font-weight: 800; }
-  .j-count { position: absolute; top: 26px; left: 50%; transform: translateX(-50%); z-index: 1;
-    font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: #6f7178; }
-  .j-dots { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); z-index: 5;
-    display: flex; flex-direction: column; gap: 9px; }
-  .j-dot { width: 7px; height: 7px; border-radius: 50%; background: #34353c; cursor: pointer; transition: background .3s, transform .3s; }
-  .j-dot.active { background: var(--gold-bg); transform: scale(1.3); }
-  .j-hint { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 1;
-    font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: #6f7178; animation: jbob 1.8s ease-in-out infinite; }
-  @keyframes jbob { 0%, 100% { transform: translate(-50%, 0); opacity: .7; } 50% { transform: translate(-50%, 6px); opacity: 1; } }
-  .j-slide.bridge .j-text { color: var(--gold-bg); cursor: pointer; }
-  @media (prefers-reduced-motion: reduce) { .j-emoji, .j-text { opacity: 1; transform: none; transition: none; } }
+  /* ---------- Mentors ---------- */
+  .mentor-grid{display:grid; grid-template-columns:repeat(5,1fr); gap:18px;}
+  .mentor-card{
+    background:var(--white); border-radius:var(--radius-md); overflow:hidden; box-shadow:var(--shadow-card);
+    display:flex; flex-direction:column; transition:transform .25s;
+  }
+  .mentor-card:hover{transform:translateY(-6px);}
+  .mentor-portrait{
+    aspect-ratio:1/1; display:flex; align-items:center; justify-content:center; font-size:44px; position:relative; overflow:hidden;
+  }
+  .mentor-portrait img{width:100%; height:100%; object-fit:cover; object-position:center 20%; display:block; transition:transform .4s ease;}
+  .mentor-card:hover .mentor-portrait img{transform:scale(1.05);}
+  .mentor-card:nth-child(1) .mentor-portrait{background:linear-gradient(160deg,#e7d9b8,#c9b48a);}
+  .mentor-card:nth-child(2) .mentor-portrait{background:linear-gradient(160deg,#d8e0c6,#a7b47f);}
+  .mentor-card:nth-child(3) .mentor-portrait{background:linear-gradient(160deg,#c9d4c1,#8a9a5b);}
+  .mentor-card:nth-child(4) .mentor-portrait{background:linear-gradient(160deg,#f0d3c4,#dba07d);}
+  .mentor-card:nth-child(5) .mentor-portrait{background:linear-gradient(160deg,#e3cccb,#c0663a); color:#faf6ec;}
+  .mentor-soon{
+    position:absolute; top:10px; right:10px; background:rgba(28,39,24,0.75); color:var(--cream-100);
+    font-size:10px; font-weight:700; padding:5px 10px; border-radius:100px;
+  }
+  .mentor-info{padding:16px 18px 20px; display:flex; flex-direction:column; gap:10px;}
+  .mentor-info h4{font-size:16px;}
+  .mentor-info .role{font-size:12.5px; color:#5a6250; margin-top:-6px;}
+  .mentor-power{font-size:12px; color:#5a6250;}
+  .mentor-power b{color:var(--forest-800); display:block; font-size:11px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:2px;}
 
-  /* format cards (Результат/Привычка/Аскеза) */
-  .fmt-card { border-radius: 20px; padding: 26px; border: 1px solid var(--line); }
-  .fmt-card.gold { border-top: 4px solid var(--gold-bg); }
-  .fmt-card.teal { border-top: 4px solid var(--teal); }
-  .fmt-card.red { border-top: 4px solid var(--crimson); }
-  .fmt-card .ftitle { font-weight: 800; text-transform: uppercase; letter-spacing: .06em; font-size: 13px; margin-bottom: 8px; }
-  .fmt-card.gold .ftitle { color: var(--gold); } .fmt-card.teal .ftitle { color: var(--teal); } .fmt-card.red .ftitle { color: var(--crimson); }
-  .fmt-card h3 { font-size: 22px; margin-bottom: 10px; }
-  .fmt-card .fdesc { color: var(--muted); font-size: 15px; line-height: 1.6; margin-bottom: 16px; }
-  .fmt-card .flist { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
-  .fmt-card .flist div { font-size: 14px; color: var(--ink); padding-left: 18px; position: relative; }
-  .fmt-card .flist div::before { content: "—"; position: absolute; left: 0; color: var(--muted); }
-  .fmt-card .examples { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; }
-  .fmt-card .examples b { color: var(--ink); font-weight: 700; }
-  .fmt-card.violet { border-top: 4px solid #7a5ac8; }
-  .fmt-card.blue { border-top: 4px solid #2f7dc0; }
-  .fmt-card.violet .ftitle { color: #7a5ac8; }
-  .fmt-card.blue .ftitle { color: #2f7dc0; }
+  /* ---------- Goal categories ---------- */
+  .goal-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:20px;}
+  .goal-card{
+    background:var(--white); border-radius:var(--radius-md); padding:26px 22px; box-shadow:var(--shadow-card);
+    display:flex; flex-direction:column; gap:12px;
+  }
+  .goal-card .ic-wrap{
+    width:58px; height:58px; border-radius:16px;
+    background:linear-gradient(140deg, var(--sun-300), var(--sun-400) 50%, var(--sun-500));
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 12px 24px -10px rgba(244,185,66,0.55), inset 0 1px 0 rgba(255,255,255,0.35);
+  }
+  .goal-card .ic-wrap svg{width:28px; height:28px; stroke:var(--forest-900); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;}
+  .goal-card h4{font-size:16.5px;}
+  .goal-card ul{list-style:none; display:flex; flex-direction:column; gap:6px; font-size:13.5px; color:#5a6250;}
+  .goal-card ul li::before{content:'— '; color:var(--olive-400);}
+  .goal-card.cta-card{background:var(--forest-900); color:var(--cream-100); justify-content:center; align-items:flex-start;}
+  .goal-card.cta-card h4{color:var(--cream-100); font-size:18px;}
+  .goal-card.cta-card p{font-size:13.5px; color:rgba(250,246,236,0.65); margin-bottom:6px;}
 
-  /* отзывы */
-  .review-card { border: 1px solid var(--line); border-radius: 18px; padding: 24px; background: #fff; }
-  .review-card p { margin: 0 0 14px; color: var(--ink); font-size: 14.5px; line-height: 1.65; }
-  .review-card .who { font-size: 13.5px; font-weight: 800; color: var(--gold); }
+  /* ---------- What changes ---------- */
+  .change-card{background:var(--white); border-radius:var(--radius-lg); padding:52px 48px; box-shadow:var(--shadow-soft);}
+  .change-grid{display:grid; grid-template-columns:repeat(5,1fr); gap:16px; margin-bottom:34px;}
+  .change-photo{border-radius:var(--radius-md); overflow:hidden; box-shadow:var(--shadow-card); background:var(--white);}
+  .change-photo img{width:100%; aspect-ratio:4/5; object-fit:cover; display:block; transition:transform .4s ease;}
+  .change-photo:hover img{transform:scale(1.06);}
+  .change-photo-body{padding:14px 14px 16px;}
+  .change-photo-body .num-tag{
+    display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%;
+    background:var(--forest-800); color:var(--cream-100); font-size:11px; font-weight:700; font-family:'Unbounded'; margin-right:6px;
+  }
+  .change-photo-body h4{font-size:13.5px; display:inline; line-height:1.15;}
+  .change-photo-body p{font-size:12px; color:#5a6250; margin-top:6px; line-height:1.35;}
+  .change-quote{
+    display:flex; align-items:center; gap:14px; justify-content:center; background:var(--cream-200);
+    border-radius:100px; padding:18px 30px; margin-bottom:30px; text-align:center;
+  }
+  .change-quote .star{
+    width:34px; height:34px; border-radius:50%; background:var(--forest-800); color:var(--sun-400);
+    display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0;
+  }
+  .change-quote p{font-weight:700; font-size:15.5px; color:var(--forest-900);}
+  .change-cta{display:flex; justify-content:center;}
 
-  /* modes (public/private) comparison */
-  .modes { display: grid; grid-template-columns: 1fr; gap: 14px; }
-  .mode-card { border-radius: 18px; padding: 24px; border: 1px solid #26272d; background: #17181c; }
-  .mode-card h3 { font-size: 19px; margin-bottom: 10px; color: #fff; }
-  .mode-card p { color: #b7b9c2; font-size: 14.5px; line-height: 1.6; margin: 0 0 12px; }
-  .mode-card .who { font-size: 13px; color: var(--gold-bg); font-weight: 700; }
+  /* ---------- Scroll reveal animation ---------- */
+  .reveal{
+    opacity:0; transform:translateY(30px);
+    transition:opacity .7s cubic-bezier(.16,.8,.4,1), transform .7s cubic-bezier(.16,.8,.4,1);
+    will-change:opacity, transform;
+  }
+  .reveal.is-visible{opacity:1; transform:translateY(0);}
+  @media (prefers-reduced-motion: reduce){
+    .reveal{opacity:1; transform:none; transition:none;}
+  }
 
-  /* persona grid */
-  .persona-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .persona-card { position: relative; border-radius: 18px; overflow: hidden; aspect-ratio: 3/4; border: 1px solid #26272d; }
-  .persona-card img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(.92); }
-  .persona-card .shade { position: absolute; inset: 0; box-shadow: inset 0 -100px 70px -20px rgba(0,0,0,.94); }
-  .persona-card .pinfo { position: absolute; left: 0; right: 0; bottom: 0; padding: 13px; }
-  .persona-card .pname { font-weight: 800; font-size: 15.5px; color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,.8); }
-  .persona-card .pline { font-size: 11.5px; color: #d8dae0; margin-top: 3px; text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+  /* ---------- FAQ ---------- */
+  .faq-list{display:flex; flex-direction:column; gap:12px; max-width:820px; margin:0 auto;}
+  .faq-item{background:var(--white); border-radius:var(--radius-md); box-shadow:var(--shadow-card); overflow:hidden;}
+  .faq-q{
+    display:flex; align-items:center; justify-content:space-between; padding:20px 24px; cursor:pointer;
+    font-weight:700; font-size:15.5px; color:var(--forest-900); gap:16px;
+  }
+  .faq-q .chev{transition:transform .25s; color:var(--olive-400); font-size:18px; flex-shrink:0;}
+  .faq-item.open .chev{transform:rotate(45deg);}
+  .faq-a{max-height:0; overflow:hidden; transition:max-height .3s ease;}
+  .faq-a p{padding:0 24px 20px; font-size:14.5px; color:#5a6250;}
 
-  /* profile mock */
-  .profile-card { border: 1px solid var(--line); border-radius: 22px; padding: 26px; max-width: 380px; margin: 0 auto; background: #fff; }
-  .profile-top { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
-  .avatar-circle { width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--gold-bg), #cc9530);
-    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; color: #1a1200; flex-shrink: 0; }
-  .profile-name { font-weight: 800; font-size: 17px; }
-  .profile-sub { font-size: 13px; color: var(--muted); }
-  .trust-row { margin-bottom: 16px; }
-  .trust-label { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; margin-bottom: 7px; }
-  .trust-bar { height: 9px; border-radius: 6px; background: var(--bg-soft); overflow: hidden; }
-  .trust-fill { height: 100%; width: 78%; background: linear-gradient(90deg, var(--gold-bg), var(--gold)); border-radius: 6px; }
-  .profile-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; text-align: center; }
-  .profile-stats div { border-top: 1px solid var(--line); padding-top: 10px; }
-  .profile-stats b { display: block; font-size: 19px; font-weight: 800; }
-  .profile-stats span { font-size: 11px; color: var(--muted); }
+  /* ---------- About ---------- */
+  .about-card{
+    display:grid; grid-template-columns:1fr 0.85fr; gap:0; border-radius:var(--radius-lg); overflow:hidden;
+    box-shadow:var(--shadow-soft);
+  }
+  .about-text{background:var(--white); padding:52px; display:flex; flex-direction:column; justify-content:center; gap:14px;}
+  .about-text .section-tag{margin-bottom:0;}
+  .about-text p{font-size:16px; color:#3f4636; line-height:1.7;}
+  .about-visual{position:relative; overflow:hidden;}
+  .about-visual svg, .about-visual img{width:100%; height:100%; object-fit:cover; object-position:center 20%; display:block;}
 
-  /* two brothers */
-  .brothers { display: flex; flex-direction: column; gap: 18px; align-items: center; text-align: center; }
-  .brothers-avatars { display: flex; gap: -10px; margin-bottom: 6px; }
-  .binitial { width: 74px; height: 74px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    font-weight: 800; font-size: 26px; border: 1px solid var(--line); background: var(--bg-soft); }
-  .binitial.m { margin-right: -16px; z-index: 2; color: var(--gold); }
-  .binitial.v { color: var(--ink); }
-  .brothers blockquote { font-size: clamp(19px, 4vw, 25px); line-height: 1.5; font-weight: 700; margin: 10px 0; max-width: 620px; }
-  .brothers p.story { color: var(--muted); font-size: 15.5px; line-height: 1.7; max-width: 560px; }
-  .brothers .sign { font-size: 13.5px; color: var(--muted); font-weight: 700; }
+  /* ---------- Final CTA ---------- */
+  .final-cta{
+    background:linear-gradient(135deg, var(--forest-800), var(--forest-900));
+    border-radius:var(--radius-lg); padding:64px 48px; text-align:center; color:var(--cream-100);
+    position:relative; overflow:hidden;
+  }
+  .final-cta::before{
+    content:''; position:absolute; inset:0;
+    background:radial-gradient(circle at 15% 85%, rgba(167,180,127,0.2), transparent 50%);
+  }
+  .final-cta *{position:relative;}
+  .final-cta h2{color:var(--cream-100); font-size:30px; max-width:600px; margin:0 auto 26px;}
+  .final-cta .sub{color:rgba(250,246,236,0.65); font-size:14px; margin-top:18px;}
 
-  /* FAQ */
-  .faq { display: flex; flex-direction: column; gap: 10px; }
-  .faq-item { border: 1px solid var(--line); background: #fff; border-radius: 14px; padding: 4px 20px; }
-  .faq-item summary { cursor: pointer; list-style: none; padding: 16px 26px 16px 0; font-size: 15.5px; font-weight: 700; position: relative; }
-  .faq-item summary::-webkit-details-marker { display: none; }
-  .faq-item summary::after { content: "+"; position: absolute; right: 0; top: 13px; font-size: 20px; color: var(--gold); font-weight: 800; }
-  .faq-item[open] summary::after { content: "–"; }
-  .faq-item p { margin: 0 0 18px; color: var(--muted); font-size: 14.5px; line-height: 1.6; }
+  /* ---------- Footer ---------- */
+  footer{background:var(--forest-900); color:rgba(250,246,236,0.6); padding:44px 0 28px;}
+  .footer-grid{display:flex; justify-content:space-between; align-items:flex-start; gap:24px; flex-wrap:wrap; padding-bottom:28px; border-bottom:1px solid rgba(250,246,236,0.1);}
+  .footer-logo{display:flex; align-items:center; gap:12px; color:var(--cream-100); font-family:'Unbounded'; font-weight:700; font-size:17px;}
+  .footer-logo .mark{width:44px; height:44px; border-radius:50%; overflow:hidden; flex-shrink:0;}
+  .footer-logo .mark img{width:100%; height:100%; object-fit:cover; object-position:center 38%; transform:scale(1.85); display:block;}
+  .footer-tag{font-size:12px; color:rgba(250,246,236,0.45); margin-top:4px;}
+  .footer-links{display:flex; gap:28px; flex-wrap:wrap; font-size:13.5px; font-weight:600;}
+  .footer-links a{opacity:.75; transition:opacity .2s;}
+  .footer-links a:hover{opacity:1;}
+  .footer-bottom{padding-top:20px; font-size:12.5px; text-align:center; color:rgba(250,246,236,0.4);}
 
-  /* mid CTA banner */
-  .cta-banner { text-align: center; padding: 70px 0; }
-  .cta-banner h2 { font-size: clamp(26px, 6.5vw, 42px); font-weight: 800; line-height: 1.2; margin-bottom: 26px; }
-  .cta-banner .btn { max-width: 320px; }
-
-  /* roadmap */
-  .roadmap-item { display: flex; gap: 14px; align-items: flex-start; padding: 16px 0; border-bottom: 1px solid var(--line); }
-  .roadmap-item:last-child { border-bottom: none; }
-  .roadmap-item .rtag { flex-shrink: 0; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em;
-    color: var(--gold); background: var(--gold-soft); border-radius: 8px; padding: 5px 9px; margin-top: 2px; white-space: nowrap; }
-  .roadmap-item b { display: block; font-size: 15.5px; margin-bottom: 3px; }
-  .roadmap-item p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
-
-  /* final */
-  .final { text-align: center; }
-  .final h2 { font-size: clamp(28px, 7vw, 46px); line-height: 1.16; margin-bottom: 28px; }
-  .final .btn { max-width: 320px; margin: 0 auto; }
-
-  footer { padding: 44px 0 60px; text-align: center; font-size: 12.5px; color: var(--muted); background: var(--dark); }
-  footer .wrap { color: #9a9ca6; }
-  footer a { color: #cfd1d8; text-decoration: none; }
-
-  /* ---------- desktop ---------- */
-  @media (min-width: 760px) {
-    .nav-links { display: flex; }
-    .nav-cta { display: inline-flex; }
-    .burger { display: none; }
-    .grid.cols-2 { grid-template-columns: 1fr 1fr; }
-    .grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
-    .btn-row { flex-direction: row; }
-    .hero .cta-row { max-width: 420px; flex-direction: row; }
-    .modes { grid-template-columns: 1fr 1fr; }
-    section.sec { padding: 118px 0; }
-    .hero { padding: 70px 0 100px; }
-    .cta-banner { padding: 100px 0; }
+  /* ---------- Responsive ---------- */
+  @media (max-width:1024px){
+    .hero{min-height:70vh; padding:110px 0 60px;}
+    .problem-grid{grid-template-columns:repeat(3,1fr);}
+    .mentor-grid{grid-template-columns:repeat(3,1fr);}
+    .goal-grid{grid-template-columns:repeat(2,1fr);}
+    .format-grid{grid-template-columns:repeat(2,1fr);}
+    .about-card{grid-template-columns:1fr;}
+    .about-visual{aspect-ratio:16/9;}
+    .change-grid{grid-template-columns:repeat(3,1fr);}
+    .change-card{padding:40px 32px;}
+  }
+  @media (max-width:720px){
+    .nav-links{display:none;}
+    .nav-actions .btn{display:none;}
+    .burger{display:flex;}
+    .mobile-menu.show{display:flex;}
+    .hero{min-height:auto; padding:100px 0 60px;}
+    .hero h1{font-size:30px;}
+    .hero-sub{font-size:15.5px;}
+    .section-head h2{font-size:26px;}
+    .problem-grid{grid-template-columns:repeat(2,1fr);}
+    .mentor-grid{grid-template-columns:repeat(2,1fr);}
+    .goal-grid{grid-template-columns:1fr;}
+    .format-grid{grid-template-columns:1fr;}
+    .change-grid{grid-template-columns:repeat(2,1fr);}
+    .change-card{padding:28px 20px;}
+    .roadmap-step{grid-template-columns:44px 1fr; gap:16px;}
+    .roadmap-node .dot{width:44px; height:44px; font-size:18px;}
+    .roadmap-card{padding:16px 18px 18px; margin-bottom:22px;}
+    .fork-cards{grid-template-columns:1fr;}
+    .section-pad{padding:60px 0;}
+    .final-cta{padding:44px 26px;}
+    .final-cta h2{font-size:24px;}
+    .about-text{padding:32px 24px;}
   }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="nav">
-    <a class="logo" href="#top">Сила Слова<span class="logo-tag">Дал слово — сдержи его.</span></a>
-    <nav class="nav-links">
-      <a href="#how">Как это работает</a>
-      <a href="#result">Форматы</a>
-      <a href="#challenge">Вызов</a>
-      <a href="#coaches">Наставники</a>
-      <a href="#reviews">Отзывы</a>
+  <nav class="nav wrap">
+    <a href="#top" class="logo">
+      <span class="mark"><img src="logo.png" alt="Сила слова"></span>
+      <span>Сила слова<span class="tagline">Дал слово — сдержи его</span></span>
+    </a>
+    <div class="nav-links">
+      <a href="#how">Как работает</a>
+      <a href="#mentors">Наставники</a>
+      <a href="#formats">Форматы</a>
       <a href="#faq">FAQ</a>
-    </nav>
-    <div class="nav-right">
-      <a class="btn btn-gold nav-cta" href="https://t.me/Tvoya_Sila_Slova_Bot?start=site" target="_blank" rel="noopener" style="padding:11px 18px;font-size:14px;">Дать слово</a>
-      <button class="burger" onclick="toggleMenu()" aria-label="Меню"><span></span><span></span><span></span></button>
     </div>
-  </div>
-  <div class="mnav" id="mnav">
-    <a href="#how" onclick="toggleMenu()">Как это работает</a>
-    <a href="#cases" onclick="toggleMenu()">Кейсы</a>
-    <a href="#result" onclick="toggleMenu()">Форматы</a>
-    <a href="#challenge" onclick="toggleMenu()">Вызов</a>
-    <a href="#coaches" onclick="toggleMenu()">Наставники</a>
-    <a href="#profile" onclick="toggleMenu()">Профиль</a>
-    <a href="#reviews" onclick="toggleMenu()">Отзывы</a>
-    <a href="#brothers" onclick="toggleMenu()">О нас</a>
-    <a href="#faq" onclick="toggleMenu()">FAQ</a>
-    <a href="https://t.me/Tvoya_Sila_Slova_Bot?start=site" target="_blank" rel="noopener" style="color:var(--gold)">Дать слово в Telegram →</a>
+    <div class="nav-actions">
+      <a href="#cta" class="btn btn-primary btn-sm">Дать слово</a>
+      <button class="burger" id="burgerBtn" aria-label="Меню">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+  <div class="mobile-menu" id="mobileMenu">
+    <a href="#how">Как работает</a>
+    <a href="#mentors">Наставники</a>
+    <a href="#formats">Форматы</a>
+    <a href="#faq">FAQ</a>
+    <a href="#cta" style="border-bottom:none; color:var(--forest-600);">Дать слово →</a>
   </div>
 </header>
 
-<!-- ================= 1. STAT HERO ================= -->
-<section class="sec sec-dark hero" id="top" style="padding-top:54px">
-  <div class="wrap">
-    <div class="live-badge"><span class="dot"></span> Дал слово — сдержи его</div>
-    <h1><span class="stat">+90%</span>к вероятности выполнить цель</h1>
-    <p class="sub">Поставь на кон деньги, репутацию или своё слово. ИИ-наставник поможет не слиться.</p>
-    <div class="cta-row btn-row">
-      <a class="btn btn-gold btn-block" href="https://t.me/Tvoya_Sila_Slova_Bot?start=site" target="_blank" rel="noopener">Дать слово в Telegram</a>
-      <a class="btn btn-outline btn-block" href="#how">Как это работает ↓</a>
+<main id="top">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-bg">
+      <img src="hero-duel-3.png" alt="Двое парней сидят за столом на фоне гор и держат друг друга за руки" />
     </div>
-    <div class="fine">Оплата картой — на стадии подключения · на кону Stars и твоя честность</div>
-  </div>
-</section>
-
-<!-- ================= 1b. ЖУРНАЛ ПЕРЕМЕН — полноэкранные слайды-утверждения ================= -->
-<div class="journey" id="journey">
-  <div class="j-dots" id="j-dots"></div>
-
-  <div class="j-slide pain in">
-    <span class="j-count">1 / 12</span>
-    <div class="j-inner"><span class="j-emoji">😩</span><div class="j-text">Задолбался себя обманывать?</div></div>
-  </div>
-  <div class="j-slide pain">
-    <span class="j-count">2 / 12</span>
-    <div class="j-inner"><span class="j-emoji">🌀</span><div class="j-text">Застрял в тупике и нет выбора?</div></div>
-  </div>
-  <div class="j-slide pain">
-    <span class="j-count">3 / 12</span>
-    <div class="j-inner"><span class="j-emoji">🚫</span><div class="j-text">Не можешь найти сил сказать нет?</div></div>
-  </div>
-  <div class="j-slide pain">
-    <span class="j-count">4 / 12</span>
-    <div class="j-inner"><span class="j-emoji">🫥</span><div class="j-text">Нет поддержки?</div></div>
-  </div>
-  <div class="j-slide pain">
-    <span class="j-count">5 / 12</span>
-    <div class="j-inner"><span class="j-emoji">📉</span><div class="j-text">Не растёт результат?</div></div>
-  </div>
-  <div class="j-slide pain">
-    <span class="j-count">6 / 12</span>
-    <div class="j-inner"><span class="j-emoji">🐢</span><div class="j-text">Задолбался чувствовать себя позади?</div></div>
-  </div>
-  <div class="j-slide pivot">
-    <span class="j-count">7 / 12</span>
-    <div class="j-inner"><span class="j-emoji">🔑</span><div class="j-text">Ты тот, кому сюда.</div></div>
-  </div>
-  <div class="j-slide pivot">
-    <span class="j-count">8 / 12</span>
-    <div class="j-inner"><span class="j-emoji">⚡</span><div class="j-text">Здесь начинаются перемены — здесь твоё слово что-то значит.</div></div>
-  </div>
-  <div class="j-slide duel">
-    <span class="j-count">9 / 12</span>
-    <div class="j-inner"><span class="j-emoji">⚔️</span><div class="j-text">Начни меняться — вызови себя старого на дуэль!</div></div>
-  </div>
-  <div class="j-slide duel">
-    <span class="j-count">10 / 12</span>
-    <div class="j-inner"><span class="j-emoji">🏆</span><div class="j-text">Победишь — <strong class="hl">поменяешься, приблизишься к лучшей версии себя</strong>. Нет — <strong class="hl-red">потеряешь что-то: деньги или репутацию</strong>.</div></div>
-  </div>
-  <div class="j-slide together">
-    <span class="j-count">11 / 12</span>
-    <div class="j-inner"><span class="j-emoji">🤜🤛</span><div class="j-text">Меняйся сам — или потягайся с другом.</div></div>
-  </div>
-  <div class="j-slide bridge" onclick="document.getElementById('how').scrollIntoView({behavior:'smooth'})">
-    <span class="j-count">12 / 12</span>
-    <div class="j-inner"><div class="j-text">Вот как это работает…</div></div>
-    <div class="j-hint">Листай ↓</div>
-  </div>
-</div>
-
-<!-- ================= 2. КАК ЭТО РАБОТАЕТ ================= -->
-<section class="sec" id="how">
-  <div class="wrap center">
-    <div class="eyebrow">Механика</div>
-    <h2 class="section-title">Как это работает</h2>
-    <p class="section-lead">Четыре шага — простых по отдельности, но вместе создающих то, чего не даёт ни один трекер целей: настоящую цену за срыв.</p>
-  </div>
-  <div class="wrap" style="margin-top:44px">
-    <div class="grid">
-      <div class="step reveal"><span class="num">1</span><div><b>Записываешь обещание на камеру</b><p>«Я, [имя], даю слово, что…» — вслух, а не текстом в заметках.</p></div></div>
-      <div class="step reveal"><span class="num">2</span><div><b>Ставишь на кон то, что дорого</b><p>Слово и репутацию — всегда. Звёзды Telegram — если хочешь поднять ставки.</p></div></div>
-      <div class="step reveal"><span class="num">3</span><div><b>Отчитываешься каждый день</b><p>ИИ-наставник подталкивает, свидетель проверяет — пропуск отчёта фиксируется как срыв.</p></div></div>
-      <div class="step reveal"><span class="num">4</span><div><b>Финиш — с результатом, который нельзя стереть</b><p>Дошёл — карточка навсегда доказывает, что слово имеет цену. Слился — тоже узнают.</p></div></div>
-    </div>
-  </div>
-</section>
-
-<!-- ================= 3. ЗАЧЕМ ЭТО СОЗДАНО ================= -->
-<section class="sec sec-dark" id="why">
-  <div class="wrap center">
-    <div class="eyebrow">Зачем это существует</div>
-    <h2 class="section-title">Слово перестало что-то стоить — мы это чиним</h2>
-    <p class="section-lead">Люди бросают цели не потому, что не умеют, а потому что цена срыва — ноль. Мы убрали эту лазейку.</p>
-  </div>
-  <div class="wrap" style="margin-top:46px">
-    <div class="grid cols-3">
-      <div class="card reveal"><div class="tag">Проблема</div><h3>Обещания без последствий</h3><p>Цель в заметках можно удалить одним нажатием — и никто не узнает.</p></div>
-      <div class="card reveal"><div class="tag">Причина</div><h3>Никто не узнает</h3><p>Без свидетеля мозг легко договаривается сам с собой: «начну с понедельника».</p></div>
-      <div class="card reveal"><div class="tag">Решение</div><h3>Слово с ценой и свидетелем</h3><p>Видео-обещание, ежедневный отчёт и кто-то, кто узнает результат — вот что возвращает слову вес.</p></div>
-    </div>
-  </div>
-</section>
-
-<!-- ================= 6. КЕЙСЫ ИСПОЛЬЗОВАНИЯ ================= -->
-<section class="sec" id="cases">
-  <div class="wrap center">
-    <div class="eyebrow">Кому подходит</div>
-    <h2 class="section-title">Кейсы использования</h2>
-    <p class="section-lead">Реальные ситуации, где «просто захотеть» не сработало, а слово с ценой — сработает.</p>
-  </div>
-  <div class="wrap" style="margin-top:44px">
-    <div class="grid cols-2">
-      <div class="card reveal"><h3>Предприниматель</h3><p>«Запущу MVP до 1 марта» — с датой и отчётами вместо «доделаю на следующей неделе».</p></div>
-      <div class="card reveal"><h3>Спортивная привычка</h3><p>100 отжиманий каждый день — квота пропусков задаёт честные рамки жёсткости.</p></div>
-      <div class="card reveal"><h3>Аскеза — Добровольный Отказ</h3><p>Бросить алкоголь или соцсети ночью — со свидетелем, которому не соврёшь.</p></div>
-      <div class="card reveal"><h3>Подготовка к экзамену</h3><p>Ежедневные часы под присмотром наставника — вместо надежды на дисциплину перед сессией.</p></div>
-    </div>
-  </div>
-</section>
-
-<!-- ================= 9. ПУБЛИЧНО / ЛИЧНО ================= -->
-<section class="sec sec-dark" id="modes">
-  <div class="wrap center">
-    <div class="eyebrow">Два режима</div>
-    <h2 class="section-title">Публично или лично — решаешь сам</h2>
-    <p class="section-lead">Разная цена срыва для разных задач. Не уверен — начни с личного и перейди на публичное позже.</p>
-  </div>
-  <div class="wrap" style="margin-top:44px">
-    <div class="modes">
-      <div class="mode-card reveal">
-        <div class="who">Для смелых</div>
-        <h3>Публично</h3>
-        <p>Клятва и карточка публикуются в открытой группе. Отчёты видят все — комментариями под постом. Выполняемость выше именно потому, что «пообещал себе и забыл» здесь не работает: на тебя реально смотрят.</p>
-        <p style="margin:0">Подходит для целей, которые давно пора перестать откладывать втихую.</p>
-      </div>
-      <div class="mode-card reveal">
-        <div class="who">Для начала</div>
-        <h3>Лично</h3>
-        <p>Всё видишь только ты и бот. Никто в группе не узнает о цели или о срыве. Но себе на камеру не соврёшь — обещание и ежедневный отчёт работают точно так же честно.</p>
-        <p style="margin:0">Хороший первый шаг, если публичность пока пугает больше, чем сама цель.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ================= 10-12. ФОРМАТЫ ================= -->
-<section class="sec" id="result">
-  <div class="wrap center">
-    <div class="eyebrow">Три формата</div>
-    <h2 class="section-title">Результат, Привычка, Аскеза (Добровольный Отказ)</h2>
-    <p class="section-lead">Не одна универсальная «цель», а три разных механизма ответственности — под разные типы обещаний.</p>
-  </div>
-  <div class="wrap" style="margin-top:44px">
-    <div class="grid">
-      <div class="fmt-card gold reveal">
-        <div class="ftitle">Формат 01 · Результат</div>
-        <h3>Точка А → точка Б, к конкретному сроку</h3>
-        <p class="fdesc">Для целей с чёткой финишной чертой и датой. Формулируешь не «хочу», а «я сделаю к [дата]» — мотивацию фиксируешь сразу, чтобы вспомнить её, если станет тяжело. Отчёт не обязателен каждый день — наставник всё равно пишет ежедневно для поддержки, а итог подводится строго на финише.</p>
-        <div class="flist">
-          <div>Дедлайн задаётся числом дней или конкретной датой</div>
-          <div>Точка А фиксируется один раз и не редактируется после старта</div>
-          <div>Финальная проверка — по пруфу точки Б в срок</div>
+    <div class="wrap">
+      <div class="hero-content">
+        <h1>Ставь деньги на <span class="accent">собственные цели</span> — выполни обещание и верни их обратно</h1>
+        <p class="hero-sub">Помогаем формировать привычки и доводить начатое до результата — самостоятельно или на дуэли с друзьями. Слово снова начинает что-то значить.</p>
+        <div class="hero-ctas">
+          <a href="https://t.me/Tvoya_Sila_Slova_Bot?start=site" target="_blank" rel="noopener" class="btn btn-primary">✈ Дать слово в Telegram</a>
+          <a href="#" class="btn btn-outline-light">📱 Скачать приложение <span style="opacity:.7; font-weight:600;">(разрабатывается)</span></a>
         </div>
-        <div class="examples"><b>Похудеть на 8 кг</b> · Накопить 300 000 ₽ · Пробежать 10 км · Выучить английский до B1 · Прочитать 12 книг</div>
       </div>
-      <div class="fmt-card teal reveal" id="habit">
-        <div class="ftitle">Формат 02 · Привычка</div>
-        <h3>Регулярность минимум 21 день</h3>
-        <p class="fdesc">Для действий, которые нужно делать снова и снова, а не один раз. Сам выбираешь степень жёсткости — от «можно оступиться» до «ни одного пропуска за весь срок». Пропуск сверх квоты = слово не сдержано в этот раз, без исключений задним числом.</p>
-        <div class="flist">
-          <div><b>Лайт</b> (меньше уровень доверия) — до 2 пропусков в неделю</div>
-          <div><b>Норм</b> (стандартный уровень доверия) — 1 пропуск в месяц</div>
-          <div><b>Лучшая Версия Себя</b> (доп. бонус к доверию) — ни одного пропуска за весь срок</div>
+    </div>
+  </section>
+
+  <!-- PROBLEMS -->
+  <section class="problems-bg section-pad" id="why">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="section-tag">Почему это работает</span>
+        <h2>Почему мы бросаем начатое?</h2>
+        <p>Одного желания обычно недостаточно. Сила слова добавляет то, чего тебе не хватает для результата.</p>
+      </div>
+      <div class="problem-grid reveal-group">
+        <div class="problem-card reveal">
+          <div class="p-icon-row">
+            <div class="p-icon"><svg viewBox="0 0 24 24">
+              <rect x="2" y="10" width="8.5" height="6" rx="3" transform="rotate(-25 6 13)"/>
+              <rect x="13" y="8" width="8.5" height="6" rx="3" transform="rotate(-25 17.5 11)"/>
+              <line x1="10.8" y1="9.6" x2="12.6" y2="7.8"/>
+              <line x1="9.4" y1="12.4" x2="11.2" y2="10.6"/>
+            </svg></div>
+            <span class="p-num">01</span>
+          </div>
+          <h4>Нет реальных последствий</h4>
+          <p>Пообещал себе, нарушил — ничего не произошло.</p>
+          <div class="fix-label">Как решаем</div>
+          <p>Ты ставишь на кон деньги, которые не хочется терять.</p>
         </div>
-        <div class="examples"><b>100 отжиманий в день</b> · 10 000 шагов · Читать 20 минут · Ложиться до 23:00 · Медитировать каждое утро</div>
-      </div>
-      <div class="fmt-card red reveal" id="quit">
-        <div class="ftitle">Формат 03 · Аскеза (Добровольный Отказ)</div>
-        <h3>Не делать что-то — с проверкой свидетелем</h3>
-        <p class="fdesc">Единственный формат, где результат снаружи не виден, поэтому нужен свидетель — человек, которому доверяешь. Раз в неделю бот спрашивает у него, всё ли в порядке, а в конце срока свидетель выносит финальный вердикт: держался ты или сорвался.</p>
-        <div class="flist">
-          <div>Минимальный срок — 30 дней, это процесс на месяцы, а не на неделю</div>
-          <div>Свидетель подтверждается по ссылке-приглашению в Telegram</div>
-          <div>Финальный вердикт нельзя оспорить задним числом</div>
+        <div class="problem-card reveal">
+          <div class="p-icon-row">
+            <div class="p-icon"><svg viewBox="0 0 24 24">
+              <rect x="3" y="4" width="4.2" height="17" rx="1.2"/>
+              <rect x="9.9" y="10" width="4.2" height="11" rx="1.2" opacity="0.55"/>
+              <rect x="16.8" y="15" width="4.2" height="6" rx="1.2" opacity="0.3" stroke-dasharray="1.8 2.4"/>
+            </svg></div>
+            <span class="p-num">02</span>
+          </div>
+          <h4>Мотивация заканчивается</h4>
+          <p>На старте есть запал, но через несколько дней он пропадает.</p>
+          <div class="fix-label">Как решаем</div>
+          <p>ИИ-наставник напоминает, поддерживает и помогает держать темп.</p>
         </div>
-        <div class="examples"><b>Без алкоголя</b> · Без сигарет · Без сладкого · Без соцсетей после 22:00 · Без импульсивных покупок</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ================= NEW. ВЫЗОВ ================= -->
-<section class="sec sec-dark" id="challenge">
-  <div class="wrap center">
-    <div class="eyebrow">Вместе сложнее слиться</div>
-    <h2 class="section-title">Вызов — зови кого-то и держите слово вдвоём</h2>
-    <p class="section-lead">Одна цель, один срок — только вас двое. У каждого своя карточка и своя ставка, но кто держится, а кто слился — видно сразу обоим.</p>
-  </div>
-  <div class="wrap" style="margin-top:44px">
-    <div class="grid cols-3">
-      <div class="card reveal"><div class="tag">Шаг 1</div><h3>Общие условия</h3><p>Задаёшь цель, срок и формат — соперник принимает те же условия и записывает своё видео-обещание.</p></div>
-      <div class="card reveal"><div class="tag">Шаг 2</div><h3>Каждый сам за себя</h3><p>Отчёты, наставник и ставка — по каждой стороне отдельно, прогресс не спутать.</p></div>
-      <div class="card reveal"><div class="tag">Шаг 3</div><h3>Видно обоим</h3><p>Статус соперника — держится он или уже слился — виден в приложении каждый день.</p></div>
-    </div>
-  </div>
-  <div class="wrap center" style="margin-top:40px">
-    <a class="btn btn-gold" href="https://t.me/Tvoya_Sila_Slova_Bot?start=site" target="_blank" rel="noopener">Бросить вызов другу</a>
-  </div>
-</section>
-
-<!-- ================= NEW. ВЫЗОВ — ГРУППЫ (в разработке) ================= -->
-<section class="sec" id="challenge-groups">
-  <div class="wrap center">
-    <div class="eyebrow">Куда движется Вызов</div>
-    <h2 class="section-title">Не только 1 на 1</h2>
-    <p class="section-lead">Сейчас можно вызвать конкретного человека — это уже работает. В разработке — закрытые группы своих и открытые вызовы, к которым может присоединиться кто угодно.</p>
-  </div>
-  <div class="wrap" style="margin-top:44px">
-    <div class="grid cols-2">
-      <div class="fmt-card violet reveal">
-        <div class="ftitle">Скоро · Закрытая группа</div>
-        <h3>Свои — по приглашению, никого лишнего</h3>
-        <p class="fdesc">Тот же Вызов, только участников больше одного, и все — те, кого позвал именно ты. Условия одни на всех, но отчёт, наставник и ставка — у каждого свои. Видно только внутри группы.</p>
-        <div class="flist">
-          <div><b>Отдел продаж</b> — общая квота звонков или встреч на неделю, руководителю сразу видно, кто выполняет, а кто сливается</div>
-          <div><b>Друзья или партнёры по залу</b> — моржевание, зарядка или пробежка каждое утро: вместе сорваться сложнее</div>
-          <div><b>Кружок по медитации или чтению</b> — ежедневная практика с отчётом перед своими, а не перед всем интернетом</div>
+        <div class="problem-card reveal">
+          <div class="p-icon-row">
+            <div class="p-icon"><svg viewBox="0 0 24 24">
+              <circle cx="10.5" cy="13.5" r="8" stroke-dasharray="2.4 3"/>
+              <circle cx="10.5" cy="13.5" r="4.6"/>
+              <circle cx="10.5" cy="13.5" r="1.3" fill="currentColor" stroke="none"/>
+              <path d="M20 3.5l-5.2 5.2"/>
+              <path d="M20 3.5h-3.4M20 3.5v3.4"/>
+            </svg></div>
+            <span class="p-num">03</span>
+          </div>
+          <h4>Цель слишком размытая</h4>
+          <p>«Начать заниматься спортом» невозможно нормально проверить.</p>
+          <div class="fix-label">Как решаем</div>
+          <p>Ты фиксируешь конкретное действие, срок и условия выполнения.</p>
         </div>
-        <div class="examples"><b>Для кого:</b> команды, друзья, тесные компании, которые уже доверяют друг другу.</div>
-      </div>
-      <div class="fmt-card blue reveal">
-        <div class="ftitle">Скоро · Открытая группа</div>
-        <h3>Публично — присоединиться может кто угодно</h3>
-        <p class="fdesc">Ставишь цель, срок и правила — по ссылке подключается любой желающий. Общий рейтинг: кто ещё держится, кто уже слился, видно всем участникам сразу.</p>
-        <div class="flist">
-          <div><b>Тренер или блогер</b> запускает 30-дневный челлендж для своей аудитории — с общим рейтингом участников</div>
-          <div><b>«Год без сахара» или «Трезвый январь»</b> — открытый вызов, к которому присоединяются незнакомые люди с одной целью</div>
-          <div><b>Языковой марафон комьюнити</b> — учите вместе, отчитываетесь перед всеми участниками разом</div>
+        <div class="problem-card reveal">
+          <div class="p-icon-row">
+            <div class="p-icon"><svg viewBox="0 0 24 24">
+              <path d="M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z"/>
+              <circle cx="12" cy="12" r="2.6"/>
+              <line x1="4" y1="4" x2="20" y2="20"/>
+            </svg></div>
+            <span class="p-num">04</span>
+          </div>
+          <h4>Никто не контролирует</h4>
+          <p>Легко договориться с собой, когда о пропуске никто не узнает.</p>
+          <div class="fix-label">Как решаем</div>
+          <p>Выполнение подтверждается пруфами, другом или соперником.</p>
         </div>
-        <div class="examples"><b>Для кого:</b> комьюнити-лидеры, блогеры — все, кому важно публичное давление и общий рейтинг.</div>
+        <div class="problem-card reveal">
+          <div class="p-icon-row">
+            <div class="p-icon"><svg viewBox="0 0 24 24">
+              <circle cx="12" cy="7.2" r="3"/>
+              <path d="M6.2 20.5v-1.3a5.8 5.8 0 0 1 11.6 0v1.3"/>
+              <circle cx="3.6" cy="9" r="2" opacity="0.3" stroke-dasharray="1.4 2"/>
+              <path d="M1 19.5v-1a4 4 0 0 1 5.6-3.6" opacity="0.3" stroke-dasharray="1.4 2"/>
+              <circle cx="20.4" cy="9" r="2" opacity="0.3" stroke-dasharray="1.4 2"/>
+              <path d="M17.4 14.9a4 4 0 0 1 5.6 3.6v1" opacity="0.3" stroke-dasharray="1.4 2"/>
+            </svg></div>
+            <span class="p-num">05</span>
+          </div>
+          <h4>Одному легче сдаться</h4>
+          <p>Без поддержки, азарта и конкуренции цель быстро надоедает.</p>
+          <div class="fix-label">Как решаем</div>
+          <p>Проходи челленджи самостоятельно или соревнуйся с друзьями.</p>
+        </div>
+      </div>
+      <div class="problems-callout">
+        <p>Не надейся только на мотивацию. Создай условия, в которых сложнее слиться.</p>
+        <a href="#cta" class="btn btn-primary">Дать слово</a>
       </div>
     </div>
-    <p class="muted center" style="text-align:center;margin-top:24px;font-size:13px">Обе версии — в разработке. Прямо сейчас доступен Вызов 1 на 1 (выше).</p>
-  </div>
-</section>
+  </section>
 
-<!-- ================= 13. ИИ-НАСТАВНИКИ ================= -->
-<section class="sec sec-dark" id="coaches">
-  <div class="wrap center">
-    <div class="eyebrow">Сопровождение</div>
-    <h2 class="section-title">Твои ИИ-наставники</h2>
-    <p class="section-lead">Тебя держит не безликий пуш «не забудь». Тебя держит персонаж с характером, который говорит с тобой каждый день — и его можно сменить в любой момент под каждую ставку отдельно.</p>
-  </div>
-  <div class="wrap" style="margin-top:44px">
-    <div class="persona-grid">
-      <div class="persona-card reveal"><img src="../confucius.jpg" alt="Конфуций" loading="lazy"><div class="shade"></div>
-        <div class="pinfo"><div class="pname">Конфуций</div><div class="pline">Мудрец. Метафоры клинка и воды, спокоен, но не даст соврать себе.</div></div></div>
-      <div class="persona-card reveal"><img src="../coach.jpg" alt="Физрук Арнольд" loading="lazy"><div class="shade"></div>
-        <div class="pinfo"><div class="pname">Физрук Арнольд</div><div class="pline">Прямой, качок с района. За базар отвечают — без исключений.</div></div></div>
-      <div class="persona-card reveal"><img src="../angela_fox.jpg" alt="Анжела Фокс" loading="lazy"><div class="shade"></div>
-        <div class="pinfo"><div class="pname">Анжела Фокс</div><div class="pline">Любит по-настоящему — глубоко и заботливо, поэтому не отстанет.</div></div></div>
-      <div class="persona-card reveal"><img src="../baba_zina.jpg" alt="Баба Зина" loading="lazy"><div class="shade"></div>
-        <div class="pinfo"><div class="pname">Баба Зина 🔞</div><div class="pline">Без цензуры, сарказм и жёсткая правда. Только для тех, кто осознанно выбрал.</div></div></div>
-    </div>
-  </div>
-</section>
-
-<!-- ================= 14. ПРОФИЛЬ ================= -->
-<section class="sec" id="profile">
-  <div class="wrap center">
-    <div class="eyebrow">Твоя история</div>
-    <h2 class="section-title">Твой профиль</h2>
-    <p class="section-lead">Не просто аккаунт — репутация, которая строится словом за словом.</p>
-  </div>
-  <div class="wrap" style="margin-top:44px">
-    <div class="profile-card reveal">
-      <div class="profile-top">
-        <div class="avatar-circle">Т</div>
-        <div><div class="profile-name">Твоё имя</div><div class="profile-sub">Фото синхронизируется из Telegram</div></div>
+  <!-- FORMATS -->
+  <section class="section-pad" id="formats">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="section-tag">Форматы</span>
+        <h2>Начни меняться прямо сейчас</h2>
+        <p>Сам или с другом — выбери, как тебе комфортнее держать слово.</p>
       </div>
-      <div class="trust-row">
-        <div class="trust-label"><span>Уровень доверия</span><span>78 / 100</span></div>
-        <div class="trust-bar"><div class="trust-fill"></div></div>
-      </div>
-      <div class="profile-stats">
-        <div><b>12</b><span>слов сдержано</span></div>
-        <div><b>3</b><span>активных ставки</span></div>
-        <div><b>7</b><span>очков свидетеля</span></div>
+      <div class="format-grid reveal-group">
+        <div class="format-card reveal">
+          <div class="format-visual">
+            <img src="format-solo.png" alt="Парень перед зеркалом — дуэль с самим собой" />
+          </div>
+          <div class="format-body">
+            <h3>Дуэль с самим собой</h3>
+            <p>Твоя цель, твои условия. Держишь слово перед собой и своим кошельком.</p>
+            <a href="#cta" class="btn btn-primary btn-block btn-sm">Начать</a>
+          </div>
+        </div>
+        <div class="format-card reveal">
+          <div class="format-visual">
+            <img src="format-duel.png" alt="Два друга соревнуются 1 на 1" />
+          </div>
+          <div class="format-body">
+            <h3>1×1 с другом</h3>
+            <p>Соревнуйтесь на одну цель или разные — кто сдержит слово, тот и выиграл.</p>
+            <a href="#cta" class="btn btn-primary btn-block btn-sm">Начать</a>
+          </div>
+        </div>
+        <div class="format-card reveal">
+          <div class="format-visual">
+            <img src="format-team.png" alt="Две команды друзей соревнуются друг с другом" />
+          </div>
+          <div class="format-body">
+            <h3>Команда × команда</h3>
+            <p>Групповые челленджи между командами друзей, коллег или клубов.</p>
+            <button class="btn btn-disabled btn-block btn-sm" disabled>Скоро</button>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-  <div class="wrap" style="margin-top:36px">
-    <div class="grid cols-2">
-      <div class="card reveal"><h3>Аватар и имя</h3><p>Подтягивается из Telegram автоматически, либо ставишь своё фото — оно больше никогда не перезапишется автоматически.</p></div>
-      <div class="card reveal"><h3>История ставок</h3><p>Все сдержанные и не сдержанные слова остаются в профиле — это не скрывается и не сбрасывается.</p></div>
-      <div class="card reveal"><h3>Очки свидетеля</h3><p>Растут каждый раз, когда ты честно подтверждаешь или опровергаешь чужой отказ — репутация проверяющего тоже что-то значит.</p></div>
-      <div class="card reveal"><h3>Реферальная сеть</h3><p>Приглашаешь людей, которым доверяешь — и получаешь +5 к доверию, когда приглашённый впервые сдержит своё первое слово.</p></div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="section-pad" id="how" style="background:var(--cream-200);">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="section-tag">Механика</span>
+        <h2>Как работает Сила слова</h2>
+        <p>Ты сам выбираешь цель, условия и сумму. Дальше — единый путь из пяти шагов, который приводит к одному из двух финалов.</p>
+      </div>
+      <div class="roadmap reveal-group">
+        <div class="roadmap-step reveal">
+          <div class="roadmap-node"><div class="dot">🚩</div><div class="line"></div></div>
+          <div class="roadmap-card">
+            <span class="step-tag">Шаг 01</span>
+            <h4>Выбери, что хочешь изменить</h4>
+            <p>Сформировать привычку, отказаться от чего-то или достичь конкретного результата.</p>
+          </div>
+        </div>
+        <div class="roadmap-step reveal">
+          <div class="roadmap-node"><div class="dot">📝</div><div class="line"></div></div>
+          <div class="roadmap-card">
+            <span class="step-tag">Шаг 02</span>
+            <h4>Дай конкретное обещание</h4>
+            <p>Укажи действие, срок, график выполнения и способ подтверждения результата.</p>
+          </div>
+        </div>
+        <div class="roadmap-step reveal">
+          <div class="roadmap-node"><div class="dot">🤝</div><div class="line"></div></div>
+          <div class="roadmap-card">
+            <span class="step-tag">Шаг 03</span>
+            <h4>Выбери формат</h4>
+            <p>Проходи челлендж самостоятельно или выходи на дуэль. Она становится дополнительной мотивацией.</p>
+          </div>
+        </div>
+        <div class="roadmap-step reveal">
+          <div class="roadmap-node"><div class="dot">💰</div><div class="line"></div></div>
+          <div class="roadmap-card">
+            <span class="step-tag">Шаг 04</span>
+            <h4>Поставь деньги на своё слово</h4>
+            <p>Внеси сумму, которую не захочется терять.</p>
+          </div>
+        </div>
+        <div class="roadmap-step reveal">
+          <div class="roadmap-node"><div class="dot">☁️</div><div class="line"></div></div>
+          <div class="roadmap-card">
+            <span class="step-tag">Шаг 05</span>
+            <h4>Заливай и присылай подтверждения</h4>
+            <p>Загружай пруфы, отмечай прогресс — ИИ-наставник будет напоминать, поддерживать и держать в тонусе.</p>
+          </div>
+        </div>
+        <div class="roadmap-step fork-step reveal">
+          <div class="roadmap-node"><div class="dot">🔀</div></div>
+          <div class="fork-wrap">
+            <p class="fork-lead">Дальше всё зависит только от тебя — два возможных финала:</p>
+            <div class="fork-cards">
+              <div class="fork-card success">
+                <div class="fork-ic">🔄</div>
+                <h4>Сдержал слово — вернул деньги</h4>
+                <p>После подтверждения выполнения платформа возвращает внесённую сумму за вычетом комиссии сервиса.</p>
+              </div>
+              <div class="fork-card fail">
+                <div class="fork-ic">✕</div>
+                <h4>Не выполнил — потерял ставку</h4>
+                <p>Если условия обещания нарушены, деньги не возвращаются согласно правилам платформы.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<!-- ================= 15. ГЕЙМИФИКАЦИЯ ================= -->
-<section class="sec sec-dark" id="gamification">
-  <div class="wrap center">
-    <div class="eyebrow">Что растёт со временем</div>
-    <h2 class="section-title">Репутация — Твоя Настоящая Сила</h2>
-    <p class="section-lead">Уровень доверия — цифра, которая со временем значит больше, чем внутри самого приложения.</p>
-  </div>
-  <div class="wrap" style="margin-top:44px">
-    <div class="grid cols-2">
-      <div class="card reveal"><h3>Уровень доверия</h3><p>Растёт с каждым сдержанным словом — это накопительная репутация, а не очки за активность.</p></div>
-      <div class="card reveal"><h3>Очки свидетеля</h3><p>Отдельная репутация за честность в роли проверяющего чужих обещаний.</p></div>
+  <!-- MENTORS -->
+  <section class="section-pad" id="mentors">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="section-tag">Наставники</span>
+        <h2>Выбери свою поддержку</h2>
+        <p>Выбери стиль поддержки, который действительно работает на тебя.</p>
+      </div>
+      <div class="mentor-grid reveal-group">
+        <div class="mentor-card reveal">
+          <div class="mentor-portrait"><img src="mentor-arnold.png" alt="Баба Зина"></div>
+          <div class="mentor-info">
+            <h4>Баба Зина</h4>
+            <div class="role">Ехидная, но по делу</div>
+            <div class="mentor-power"><b>Суперсила</b>Быстро выводит на чистую воду твои отмазки.</div>
+            <a href="#cta" class="btn btn-primary btn-sm btn-block">Выбрать</a>
+          </div>
+        </div>
+        <div class="mentor-card reveal">
+          <div class="mentor-portrait"><img src="mentor-bro.png" alt="Конфуций"></div>
+          <div class="mentor-info">
+            <h4>Конфуций</h4>
+            <div class="role">Спокойствие и мудрость</div>
+            <div class="mentor-power"><b>Суперсила</b>Возвращает фокус и внутренний стержень.</div>
+            <a href="#cta" class="btn btn-primary btn-sm btn-block">Выбрать</a>
+          </div>
+        </div>
+        <div class="mentor-card reveal">
+          <div class="mentor-portrait"><img src="mentor-confucius.png" alt="БРО"><span class="mentor-soon">В разработке</span></div>
+          <div class="mentor-info">
+            <h4>БРО</h4>
+            <div class="role">Драйв и энергия</div>
+            <div class="mentor-power"><b>Суперсила</b>Скоро появится.</div>
+            <button class="btn btn-disabled btn-sm btn-block" disabled>Скоро</button>
+          </div>
+        </div>
+        <div class="mentor-card reveal">
+          <div class="mentor-portrait"><img src="mentor-angela.png" alt="Анжела"></div>
+          <div class="mentor-info">
+            <h4>Анжела</h4>
+            <div class="role">Тёплая поддержка</div>
+            <div class="mentor-power"><b>Суперсила</b>Помогает не сдаться в слабый день.</div>
+            <a href="#cta" class="btn btn-primary btn-sm btn-block">Выбрать</a>
+          </div>
+        </div>
+        <div class="mentor-card reveal">
+          <div class="mentor-portrait"><img src="mentor-baba-zina.png" alt="Физрук Арнольд"></div>
+          <div class="mentor-info">
+            <h4>Физрук Арнольд</h4>
+            <div class="role">Жёсткая дисциплина</div>
+            <div class="mentor-power"><b>Суперсила</b>Собирает волю в кулак.</div>
+            <a href="#cta" class="btn btn-primary btn-sm btn-block">Выбрать</a>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<!-- ================= NEW. ОТЗЫВЫ ================= -->
-<section class="sec sec-soft" id="reviews">
-  <div class="wrap center">
-    <div class="eyebrow">Что говорят</div>
-    <h2 class="section-title">Отзывы тех, кто уже держит слово</h2>
-    <p class="section-lead">Реальные истории — как слово с ценой меняет привычки, бизнес и отношения.</p>
-  </div>
-  <div class="wrap" style="margin-top:44px">
-    <div class="grid cols-2">
-      <div class="review-card reveal"><p>«Мне нравится это приложение — у меня в команде теперь все им пользуются, между собой называем его «АнтиБолтун» (по-нашему, по-простому). Всё, что связано с работой и было кем-то обещано, — сразу ставим на АнтиБолтун и делаем публичное обещание. Продуктивность растёт месяц от месяца — открываем всё новые способы делать то, что сказали.»</p><div class="who">Александр К.</div></div>
-      <div class="review-card reveal"><p>«Все мои новые ученицы по йоге теперь пользуются этим приложением — они знают, что придётся вернуться, и это же им на пользу: возврат постоянных клиенток почти 100%. Рекомендую всем владельцам малого бизнеса.»</p><div class="who">Лариса</div></div>
-      <div class="review-card reveal"><p>«Обожаю приложение — так просто, но реально работает! Забавный момент: даже мой папа теперь им пользуется — они с друзьями поспорили по пьяни, и теперь каждую неделю ходят на рыбалку, хаха.»</p><div class="who">Starseed</div></div>
-      <div class="review-card reveal"><p>«Друзья заставили меня попробовать — так я дал первое слово самому себе. Сейчас у меня постоянно 4-5 активных ставок. Не думал, что ответственность может быть такой простой штукой — ни разу не пропустил дедлайн или обещание. 10 из 10, рекомендую всем, особенно с СДВГ, как у меня.»</p><div class="who">Денис</div></div>
+  <!-- GOALS -->
+  <section class="section-pad" style="background:var(--cream-200);">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="section-tag">Категории</span>
+        <h2>Что ты хочешь изменить?</h2>
+      </div>
+      <div class="goal-grid reveal-group">
+        <div class="goal-card reveal">
+          <div class="ic-wrap"><svg viewBox="0 0 24 24">
+            <circle cx="4.2" cy="19.5" r="1.6" fill="var(--forest-900)" stroke="none"/>
+            <path d="M5.6 18.5c3-2 3.5-7 7-8.5s5.4 2 8-1.5" stroke-dasharray="2 2.4"/>
+            <path d="M19 3v9"/>
+            <path d="M19 3h4l-2 2.3L23 7.6h-4"/>
+          </svg></div>
+          <h4>Результат</h4>
+          <p style="font-size:13px; color:#5a6250;">Дойти из точки А в точку Б</p>
+          <ul><li>Похудеть</li><li>Запустить проект</li><li>Накопить сумму</li><li>Пробежать 10 км</li></ul>
+        </div>
+        <div class="goal-card reveal">
+          <div class="ic-wrap"><svg viewBox="0 0 24 24">
+            <path d="M4 12a8 8 0 0 1 13.6-5.7"/>
+            <path d="M17.2 2.8v4h-4"/>
+            <path d="M20 12a8 8 0 0 1-13.6 5.7"/>
+            <path d="M6.8 21.2v-4h4"/>
+          </svg></div>
+          <h4>Привычка</h4>
+          <p style="font-size:13px; color:#5a6250;">Повторять нужное действие регулярно</p>
+          <ul><li>Тренировки</li><li>Чтение</li><li>Ранний подъём</li><li>Английский</li></ul>
+        </div>
+        <div class="goal-card reveal">
+          <div class="ic-wrap"><svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9"/>
+            <line x1="6" y1="18" x2="18" y2="6"/>
+          </svg></div>
+          <h4>Аскеза</h4>
+          <p style="font-size:13px; color:#5a6250;">Отказаться от того, что мешает</p>
+          <ul><li>Без алкоголя</li><li>Без сигарет</li><li>Без сладкого</li><li>Без соцсетей после 22:00</li></ul>
+        </div>
+        <div class="goal-card cta-card reveal">
+          <h4>Не нашёл свою цель?</h4>
+          <p>Создай любую — формат подстроится под тебя.</p>
+          <a href="#cta" class="btn btn-primary btn-sm">Дать своё слово</a>
+        </div>
+      </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<!-- ================= 16. ДВА БРАТА ================= -->
-<section class="sec" id="brothers">
-  <div class="wrap brothers">
-    <div class="eyebrow">Кто это делает</div>
-    <div class="brothers-avatars">
-      <div class="binitial m">М</div>
-      <div class="binitial v">В</div>
+  <!-- WHAT CHANGES -->
+  <section class="section-pad" id="change">
+    <div class="wrap">
+      <div class="change-card reveal">
+        <div class="section-head" style="margin-bottom:0;">
+          <span class="section-tag">Эффект</span>
+          <h2>Что меняется, когда ты держишь слово</h2>
+          <p>Каждое выполненное обещание делает тебя сильнее: ты начинаешь уважать себя, управлять привычками и реально менять свою жизнь.</p>
+        </div>
+        <div class="change-grid reveal-group" style="margin-top:36px;">
+          <div class="change-photo reveal">
+            <img src="change-gym.png" alt="Растёт самоуважение">
+            <div class="change-photo-body"><span class="num-tag">1</span><h4>Растёт самоуважение</h4><p>Каждая выполненная цель доказывает: на себя можно положиться.</p></div>
+          </div>
+          <div class="change-photo reveal">
+            <img src="change-mirror.png" alt="Слово имеет вес">
+            <div class="change-photo-body"><span class="num-tag">2</span><h4>Слово имеет вес</h4><p>Обещания себе перестают быть пустыми — сказал, значит сделал.</p></div>
+          </div>
+          <div class="change-photo reveal">
+            <img src="change-phone.png" alt="Управляешь привычками">
+            <div class="change-photo-body"><span class="num-tag">3</span><h4>Управляешь привычками</h4><p>Ты сам формируешь действия, которые приводят к стабильному результату.</p></div>
+          </div>
+          <div class="change-photo reveal">
+            <img src="change-collage.png" alt="Становишься лучше в разных сферах">
+            <div class="change-photo-body"><span class="num-tag">4</span><h4>Становишься лучше в разных сферах</h4><p>Спорт, работа, здоровье, деньги, отношения — изменения идут сразу в жизнь.</p></div>
+          </div>
+          <div class="change-photo reveal">
+            <img src="change-handshake.png" alt="Помогаешь себе и друзьям">
+            <div class="change-photo-body"><span class="num-tag">5</span><h4>Помогаешь себе и друзьям</h4><p>Можно идти одному или вместе: поддерживать, соревноваться и не сливаться.</p></div>
+          </div>
+        </div>
+        <div class="change-quote">
+          <div class="star">★</div>
+          <p>Одно выполненное обещание меняет не день — оно меняет отношение к себе.</p>
+        </div>
+        <div class="change-cta">
+          <a href="#cta" class="btn btn-primary">Дать слово →</a>
+        </div>
+      </div>
     </div>
-    <blockquote>«Мы оба слишком много раз слышали — и произносили сами — обещания, которые ничего не стоили.»</blockquote>
-    <p class="story">Сила Слова — проект двух братьев, Максима и Вадима. Мы поняли: проблема не в целях и не в мотивации, а в том, что за пустое слово нет цены — и построили платформу, которая эту цену возвращает.</p>
-    <p class="sign">— Максим и Вадим, основатели</p>
-  </div>
-</section>
+  </section>
 
-<!-- ================= 17. FAQ ================= -->
-<section class="sec sec-soft" id="faq">
-  <div class="wrap center">
-    <div class="eyebrow">Прежде чем начать</div>
-    <h2 class="section-title">Частые вопросы</h2>
-    <p class="section-lead">Коротко и без воды — остальное можно спросить в Поддержке прямо в боте.</p>
-  </div>
-  <div class="wrap" style="margin-top:40px">
-    <div class="faq">
-      <details class="faq-item"><summary>Это бесплатно?</summary><p>Да, можно дать слово вообще бесплатно — на кону будет само слово и репутация. Хочешь поднять ставки — в приложении уже можно поставить Telegram Stars, это твой выбор, а не обязаловка. Оплата картой (не через Stars) — на стадии подключения.</p></details>
-      <details class="faq-item"><summary>Что если случится настоящий форс-мажор?</summary><p>Пишешь в Поддержку в течение 24 часов после срыва — разбираем по-человечески, живыми людьми, а не автоматическим отказом.</p></details>
-      <details class="faq-item"><summary>Как вы боретесь с накрученными пруфами?</summary><p>Сейчас — здравым смыслом и живой модерацией на спорных финалах. В разработке — более строгие методы верификации, подробнее в разделе «Что мы делаем дальше».</p></details>
-      <details class="faq-item"><summary>Это марафон или курс с продажами?</summary><p>Нет. Ни диплома, ни курса, ни воронки допродаж. Один инструмент: ты дал слово — бот и, по желанию, люди вокруг следят, сдержал ты его или нет.</p></details>
-      <details class="faq-item"><summary>В публичном режиме точно кто-то увидит?</summary><p>Да, пост уходит в открытую группу Telegram, и отчёты видны всем. Не готов — есть личный режим, где всё видишь только ты и бот.</p></details>
-      <details class="faq-item"><summary>Как проверяется «Аскеза», если снаружи не видно?</summary><p>Через свидетеля — человека, которому доверяешь. Раз в неделю бот спрашивает у него, всё ли в порядке, а в конце срока свидетель выносит финальный вердикт.</p></details>
-      <details class="faq-item"><summary>Что такое Вызов?</summary><p>Тот же формат и срок, но вдвоём: зовёшь друга, у каждого своя карточка и своя ставка, а статус соперника виден в приложении каждый день.</p></details>
-      <details class="faq-item"><summary>Кто видит мои данные?</summary><p>В личном режиме — только ты и бот. В публичном — то, что ты сам публикуешь: обещание и ежедневные отчёты, и ничего больше.</p></details>
+  <!-- FAQ -->
+  <section class="section-pad" id="faq">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="section-tag">Вопросы</span>
+        <h2>Частые вопросы</h2>
+      </div>
+      <div class="faq-list reveal-group">
+        <div class="faq-item reveal">
+          <div class="faq-q">Это бесплатно?<span class="chev">+</span></div>
+          <div class="faq-a"><p>Да, можно дать слово вообще бесплатно — на кону будет само слово и репутация. Хочешь поднять ставки — в приложении уже можно поставить Telegram Stars, это твой выбор, а не обязаловка. Оплата картой (не через Stars) — на стадии подключения.</p></div>
+        </div>
+        <div class="faq-item reveal">
+          <div class="faq-q">Что если случится настоящий форс-мажор?<span class="chev">+</span></div>
+          <div class="faq-a"><p>Пишешь в Поддержку в течение 24 часов после срыва — разбираем по-человечески, живыми людьми, а не автоматическим отказом.</p></div>
+        </div>
+        <div class="faq-item reveal">
+          <div class="faq-q">Как вы боретесь с накрученными пруфами?<span class="chev">+</span></div>
+          <div class="faq-a"><p>Сейчас — здравым смыслом и живой модерацией на спорных финалах. В разработке — более строгие методы верификации, подробнее в разделе «Что мы делаем дальше».</p></div>
+        </div>
+        <div class="faq-item reveal">
+          <div class="faq-q">Это марафон или курс с продажами?<span class="chev">+</span></div>
+          <div class="faq-a"><p>Нет. Ни диплома, ни курса, ни воронки допродаж. Один инструмент: ты дал слово — и твой соперник / люди вокруг / ИИ-бот следят, сдержал ты его или нет.</p></div>
+        </div>
+        <div class="faq-item reveal">
+          <div class="faq-q">В публичном режиме точно кто-то увидит?<span class="chev">+</span></div>
+          <div class="faq-a"><p>Да, пост уходит в открытую группу Telegram, и отчёты видны всем. Не готов — есть личный режим, где всё видишь только ты и бот.</p></div>
+        </div>
+        <div class="faq-item reveal">
+          <div class="faq-q">Как проверяется «Аскеза», если снаружи не видно?<span class="chev">+</span></div>
+          <div class="faq-a"><p>Через свидетеля — человека, которому доверяешь. Раз в неделю бот спрашивает у него, всё ли в порядке, а в конце срока свидетель выносит финальный вердикт.</p></div>
+        </div>
+        <div class="faq-item reveal">
+          <div class="faq-q">Что такое Дуэль?<span class="chev">+</span></div>
+          <div class="faq-a"><p>Тот же формат и срок, но вдвоём: зовёшь друга, у каждого своя карточка и своя ставка, а статус соперника виден в приложении каждый день.</p></div>
+        </div>
+        <div class="faq-item reveal">
+          <div class="faq-q">Кто видит мои данные?<span class="chev">+</span></div>
+          <div class="faq-a"><p>В личном режиме — только ты и бот. В публичном — то, что ты сам публикуешь: обещание и ежедневные отчёты, и ничего больше.</p></div>
+        </div>
+      </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<!-- ================= 18. MID CTA ================= -->
-<section class="sec sec-dark cta-banner">
-  <div class="wrap">
-    <h2>Сдержи своё слово —<br>или потеряй <strong class="hl-red">свои деньги</strong>.</h2>
-    <a class="btn btn-gold" href="https://t.me/Tvoya_Sila_Slova_Bot?start=site" target="_blank" rel="noopener">Дать слово в Telegram</a>
-    <p class="muted" style="margin-top:18px;font-size:13px">Уже сейчас на кону твои Stars и твоя честность. Оплата картой — на стадии подключения.</p>
-  </div>
-</section>
+  <!-- ABOUT -->
+  <section class="section-pad" style="background:var(--cream-200);">
+    <div class="wrap">
+      <div class="about-card reveal">
+        <div class="about-text">
+          <span class="section-tag">О создателях</span>
+          <p><strong>Сила Слова</strong> — проект двух братьев, Максима и Вадима.</p>
+          <p>С детства мы постоянно соревновались, спорили и проверяли себя на прочность. Нас подталкивали азарт победы, конкуренция и желание становиться сильнее.</p>
+          <p>Повзрослев, мы заметили, как легко люди отказываются от обещаний, данных самим себе. И дело не в отсутствии целей или мотивации. Просто у невыполненного слова чаще всего нет последствий.</p>
+          <p>Так появилась Сила Слова — платформа, которая возвращает слову цену, помогает не бросать начатое, двигаться к своей мечте и добиваться результата.</p>
+        </div>
+        <div class="about-visual">
+          <img src="founders.jpg" alt="Максим и Вадим — основатели Силы Слова" />
+        </div>
+      </div>
+    </div>
+  </section>
 
-<!-- ================= 19. ЧТО ДАЛЬШЕ ================= -->
-<section class="sec" id="roadmap">
-  <div class="wrap center">
-    <div class="eyebrow">В разработке</div>
-    <h2 class="section-title">Что мы делаем сейчас и что скоро выйдет</h2>
-    <p class="section-lead">Сила Слова растёт быстро — вот честный список того, над чем мы работаем прямо сейчас.</p>
-  </div>
-  <div class="wrap" style="margin-top:40px">
-    <div class="roadmap-item reveal"><div class="rtag">Верификация</div><div><b>Более строгие пруфы</b><p>Таймстемпы, видео-подтверждение и геолокация — сложнее подделать отчёт.</p></div></div>
-    <div class="roadmap-item reveal"><div class="rtag">Геймификация</div><div><b>Публичные рейтинги и бейджи</b><p>Лидерборды по уровню доверия и знаки отличия за дисциплину в каждом формате.</p></div></div>
-    <div class="roadmap-item reveal"><div class="rtag">Синхронизация</div><div><b>Связь с другими приложениями</b><p>Apple Health, Google Fit, Strava — автоматическое подтверждение части отчётов.</p></div></div>
-    <div class="roadmap-item reveal"><div class="rtag">Бизнес</div><div><b>Корпоративные решения</b><p>White-label версии для компаний и HR-команд — культура ответственности без штрафов.</p></div></div>
-    <div class="roadmap-item reveal"><div class="rtag">Оплата</div><div><b>Оплата картой</b><p>В дополнение к Stars — для тех, кто хочет ставить деньги напрямую.</p></div></div>
-  </div>
-</section>
+  <!-- FINAL CTA -->
+  <section class="section-pad" id="cta">
+    <div class="wrap">
+      <div class="final-cta reveal">
+        <h2>Следующий понедельник ничего не изменит. Первое действие — изменит.</h2>
+        <a href="https://t.me/Tvoya_Sila_Slova_Bot?start=site" target="_blank" rel="noopener" class="btn btn-outline-light">✈ Дать слово в Telegram</a>
+        <div class="sub">Начни сейчас — и путь к твоей цели станет конкретным.</div>
+      </div>
+    </div>
+  </section>
 
-<!-- ================= 20. START NOW ================= -->
-<section class="sec sec-dark final">
-  <div class="wrap">
-    <div class="eyebrow">Решай сейчас</div>
-    <h2>Только ты <strong class="hl">против</strong> тебя.<br>Слово либо стоит чего-то, либо нет.</h2>
-    <a class="btn btn-gold" href="https://t.me/Tvoya_Sila_Slova_Bot?start=site" target="_blank" rel="noopener">Начать — дать слово в Telegram</a>
-  </div>
-</section>
+</main>
 
 <footer>
-  <div class="wrap">Сила Слова · слово имеет цену<br><a href="https://t.me/Tvoya_Sila_Slova_Bot" target="_blank" rel="noopener">@Tvoya_Sila_Slova_Bot</a></div>
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-logo"><span class="mark"><img src="logo.png" alt="Сила слова"></span>Сила слова</div>
+        <div class="footer-tag">Дал слово — сдержи его</div>
+      </div>
+      <div class="footer-links">
+        <a href="#">Пользовательское соглашение</a>
+        <a href="#">Политика конфиденциальности</a>
+        <a href="#">Правила сервиса</a>
+        <a href="#">Поддержка</a>
+        <a href="#">Сотрудничество</a>
+        <a href="https://t.me/Tvoya_Sila_Slova_Bot?start=site" target="_blank" rel="noopener">Telegram</a>
+      </div>
+    </div>
+    <div class="footer-bottom">© 2026 Сила слова. Все права защищены.</div>
+  </div>
 </footer>
 
 <script>
-  function toggleMenu() { document.getElementById('mnav').classList.toggle('open'); }
-  var io = new IntersectionObserver(function (entries) {
-    entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
-  }, { threshold: .12, rootMargin: '0px 0px -60px 0px' });
-  document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
+  // Mobile menu toggle
+  const burgerBtn = document.getElementById('burgerBtn');
+  const mobileMenu = document.getElementById('mobileMenu');
+  burgerBtn.addEventListener('click', () => {
+    mobileMenu.classList.toggle('show');
+  });
+  mobileMenu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => mobileMenu.classList.remove('show')));
 
-  // ---------- журнал перемен: активный слайд получает .in (проигрывает эмодзи+текст),
-  // точки справа — навигация и индикатор прогресса; scroll-snap делает всю механику листания,
-  // здесь только реакция на то, какой слайд сейчас в фокусе ----------
-  (function () {
-    var journey = document.getElementById('journey');
-    var slides = Array.prototype.slice.call(document.querySelectorAll('.j-slide'));
-    var dotsWrap = document.getElementById('j-dots');
-    if (!journey || !slides.length || !dotsWrap) return;
-    slides.forEach(function (s, i) {
-      var dot = document.createElement('div');
-      dot.className = 'j-dot' + (i === 0 ? ' active' : '');
-      dot.onclick = function () { s.scrollIntoView({ behavior: 'smooth' }); };
-      dotsWrap.appendChild(dot);
-    });
-    var dots = Array.prototype.slice.call(dotsWrap.children);
-    var journeyIO = new IntersectionObserver(function (entries) {
-      entries.forEach(function (e) {
-        var idx = slides.indexOf(e.target);
-        if (e.isIntersecting) {
-          e.target.classList.add('in');
-          dots.forEach(function (d, i) { d.classList.toggle('active', i === idx); });
-        }
+  // FAQ accordion
+  document.querySelectorAll('.faq-item').forEach(item => {
+    const q = item.querySelector('.faq-q');
+    const a = item.querySelector('.faq-a');
+    q.addEventListener('click', () => {
+      const isOpen = item.classList.contains('open');
+      document.querySelectorAll('.faq-item').forEach(i => {
+        i.classList.remove('open');
+        i.querySelector('.faq-a').style.maxHeight = null;
       });
-    }, { root: journey, threshold: .6 });
-    slides.forEach(function (s) { journeyIO.observe(s); });
-  })();
+      if(!isOpen){
+        item.classList.add('open');
+        a.style.maxHeight = a.scrollHeight + 'px';
+      }
+    });
+  });
+
+  // Scroll reveal animation with stagger
+  document.querySelectorAll('.reveal-group').forEach(group => {
+    const items = group.querySelectorAll(':scope > .reveal');
+    items.forEach((el, i) => { el.style.transitionDelay = Math.min(i * 90, 450) + 'ms'; });
+  });
+  const revealIO = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('is-visible');
+        revealIO.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15, rootMargin: '0px 0px -60px 0px' });
+  document.querySelectorAll('.reveal').forEach(el => revealIO.observe(el));
+
+  // Hero entrance animation on load
+  window.addEventListener('DOMContentLoaded', () => {
+    const heroContent = document.querySelector('.hero-content');
+    if (heroContent) {
+      heroContent.style.opacity = '0';
+      heroContent.style.transform = 'translateY(24px)';
+      heroContent.style.transition = 'opacity .9s cubic-bezier(.16,.8,.4,1), transform .9s cubic-bezier(.16,.8,.4,1)';
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          heroContent.style.opacity = '1';
+          heroContent.style.transform = 'translateY(0)';
+        });
+      });
+    }
+  });
 </script>
+
 </body>
 </html>
