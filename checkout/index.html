@@ -3,6 +3,255 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Оплата обещания — Сила Слова</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0d10; --panel: #16181d; --panel2: #1c1f26; --border: #2a2d35; --text: #eceef2;
+    --muted: #90959f; --gold: #e8b04b; --gold2: #f2c86b; --green: #2fb587;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0; background: var(--bg); color: var(--text); min-height: 100vh;
+  }
+  .wrap { max-width: 420px; margin: 0 auto; padding: 24px 18px 60px; }
+  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+  .brand .mark { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--gold), #c8862f); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .brand .name { font-weight: 800; font-size: 17px; }
+  .brand .sub { color: var(--muted); font-size: 12px; }
+  h1 { font-size: 19px; margin: 0 0 4px; }
+  .step-label { color: var(--gold2); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+  .card { border: 1px solid var(--border); background: var(--panel); border-radius: 16px; padding: 18px; margin-bottom: 14px; }
+  .muted { color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+  .row { display: flex; justify-content: space-between; gap: 12px; margin: 8px 0; font-size: 14.5px; }
+  .row span:first-child { color: var(--muted); }
+  .row span:last-child { text-align: right; font-weight: 600; }
+  .row.total span:last-child { font-size: 20px; font-weight: 800; color: var(--gold2); }
+  hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+  .chips { display: flex; gap: 8px; margin: 10px 0 4px; }
+  .chip { flex: 1; text-align: center; padding: 12px 4px; border-radius: 12px; border: 1px solid var(--border);
+    background: var(--panel2); cursor: pointer; font-size: 14px; font-weight: 700; transition: all .15s; }
+  .chip.active { border-color: var(--gold); background: rgba(232,176,75,.12); color: var(--gold2); }
+  input[type="text"] {
+    width: 100%; padding: 13px 14px; border-radius: 12px; border: 1px solid var(--border);
+    background: var(--panel2); color: var(--text); font-size: 16px; font-family: inherit; margin-top: 8px; }
+  input[type="text"]:focus { outline: none; border-color: var(--gold); }
+  .cap-note { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  button.pay { width: 100%; padding: 15px; border: none; border-radius: 13px; font-size: 16px; font-weight: 800;
+    background: linear-gradient(135deg, var(--gold), #c8862f); color: #1a1200; margin-top: 6px; cursor: pointer; }
+  button.pay:active { transform: scale(.98); }
+  button.pay.stars { background: linear-gradient(135deg, #6ec6ff, #2f8fd8); color: #041424; }
+  .methods { display: flex; gap: 8px; margin: 12px 0; }
+  .methods .m { flex: 1; border: 1px solid var(--border); background: var(--panel2); border-radius: 10px; padding: 10px 6px; text-align: center; font-size: 11.5px; color: var(--muted); font-weight: 700; letter-spacing: .02em; }
+  .field { margin-top: 12px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; font-weight: 600; }
+  .field-row { display: flex; gap: 10px; }
+  .field-row .field { flex: 1; }
+  .lock-note { display: flex; align-items: center; gap: 6px; justify-content: center; margin-top: 14px; color: var(--muted); font-size: 12px; }
+  .badge-yk { display: inline-flex; align-items: center; gap: 6px; background: var(--panel2); border: 1px solid var(--border); border-radius: 20px; padding: 5px 12px; font-size: 11.5px; color: var(--muted); font-weight: 700; }
+  .success { display: none; text-align: center; padding: 30px 10px 10px; }
+  .success .tick { width: 62px; height: 62px; border-radius: 50%; background: rgba(47,181,135,.15); border: 2px solid var(--green); display: flex; align-items: center; justify-content: center; font-size: 30px; margin: 0 auto 16px; color: var(--green); }
+  .success h2 { margin: 0 0 8px; font-size: 18px; }
+  .screen { display: block; }
+  .screen.hidden { display: none; }
+  .back-link { color: var(--muted); font-size: 13px; margin-bottom: 14px; display: inline-block; cursor: pointer; }
+  .method-option { border: 1px solid var(--border); background: var(--panel2); border-radius: 14px; padding: 16px; margin-bottom: 12px; cursor: pointer; display: flex; align-items: center; gap: 14px; transition: all .15s; }
+  .method-option:hover, .method-option:active { border-color: var(--gold); }
+  .method-option .ic { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .method-option .ic.stars-ic { background: rgba(47,143,216,.18); }
+  .method-option .ic.card-ic { background: rgba(232,176,75,.15); }
+  .method-option .txt .t1 { font-weight: 700; font-size: 14.5px; }
+  .method-option .txt .t2 { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .stars-amount { text-align: center; padding: 10px 0; }
+  .stars-amount .n { font-size: 34px; font-weight: 800; color: #6ec6ff; }
+  .stars-amount .l { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand">
+    <div class="mark">🤝</div>
+    <div><div class="name">Сила слова</div><div class="sub">Дал слово — сдержи его</div></div>
+  </div>
+
+  <!-- ЭКРАН 1: сумма обещания -->
+  <div id="screen-stake" class="screen">
+    <div class="step-label">Шаг 3 из 4 · Обещание</div>
+    <h1>На кону твои деньги</h1>
+    <p class="muted" style="margin-bottom:16px">Сумма в рублях или Stars — выбери способ оплаты на следующем шаге. Дошёл до цели — деньги вернутся. Слился — остаются платформе.</p>
+
+    <div class="card">
+      <div class="row"><span>Цель</span><span>Без сигарет</span></div>
+      <div class="row"><span>Тип</span><span>Отказ</span></div>
+      <div class="row"><span>Срок</span><span>14 дней</span></div>
+      <div class="row"><span>Режим</span><span>Личное</span></div>
+    </div>
+
+    <div class="card">
+      <div class="muted" style="margin-bottom:4px;font-weight:700;color:var(--text)">Выбери сумму</div>
+      <div class="chips">
+        <div class="chip" onclick="pick(1000,this)">1 000 ₽</div>
+        <div class="chip active" onclick="pick(5000,this)">5 000 ₽</div>
+        <div class="chip" onclick="pick(10000,this)">10 000 ₽</div>
+      </div>
+      <div class="muted" style="margin:12px 0 2px">Или своя сумма:</div>
+      <input id="custom-amount" type="text" inputmode="numeric" placeholder="Например: 3500" oninput="onCustom(this.value)">
+      <div class="cap-note">Минимум 1 000 ₽ · максимум 20 000 ₽ за одно обещание.</div>
+    </div>
+
+    <button class="pay" onclick="goMethod()">Перейти к оплате</button>
+  </div>
+
+  <!-- ЭКРАН 2: выбор способа оплаты (форк Stars / карта) -->
+  <div id="screen-method" class="screen hidden">
+    <span class="back-link" onclick="goStake()">← Изменить сумму</span>
+    <div class="step-label">Шаг 4 из 4 · Способ оплаты</div>
+    <h1>Как оплатить обещание?</h1>
+    <p class="muted" style="margin-bottom:14px">Сумма: <b id="method-amount" style="color:var(--text)">5 000 ₽</b></p>
+
+    <div class="method-option" onclick="goStars()">
+      <div class="ic stars-ic">⭐</div>
+      <div class="txt"><div class="t1">Telegram Stars</div><div class="t2">Оплата прямо в Telegram, без карты</div></div>
+    </div>
+
+    <div class="method-option" onclick="goCheckout()">
+      <div class="ic card-ic">💳</div>
+      <div class="txt"><div class="t1">Банковская карта</div><div class="t2">МИР, VISA, Mastercard · через ЮKassa</div></div>
+    </div>
+  </div>
+
+  <!-- ЭКРАН 3a: чекаут / оплата картой -->
+  <div id="screen-checkout" class="screen hidden">
+    <span class="back-link" onclick="goMethod()">← Способ оплаты</span>
+    <div class="step-label">Оплата обещания</div>
+    <h1>Подтверди платёж</h1>
+
+    <div class="card">
+      <div class="row"><span>Заказ</span><span>№ SS-10482</span></div>
+      <div class="row"><span>Обещание «Без сигарет»</span><span id="sum-label">5 000 ₽</span></div>
+      <div class="row"><span>Комиссия сервиса</span><span>0 ₽</span></div>
+      <hr>
+      <div class="row total"><span>Итого к оплате</span><span id="total-label">5 000 ₽</span></div>
+    </div>
+
+    <div class="card">
+      <div class="muted" style="font-weight:700;color:var(--text);margin-bottom:8px">Способ оплаты</div>
+      <div class="methods">
+        <div class="m">МИР</div>
+        <div class="m">VISA</div>
+        <div class="m">Mastercard</div>
+        <div class="m">СБП</div>
+      </div>
+      <div class="field">
+        <label>Номер карты</label>
+        <input type="text" placeholder="0000 0000 0000 0000" inputmode="numeric">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Срок действия</label>
+          <input type="text" placeholder="ММ/ГГ">
+        </div>
+        <div class="field">
+          <label>CVC</label>
+          <input type="text" placeholder="•••">
+        </div>
+      </div>
+      <div class="field">
+        <label>Держатель карты</label>
+        <input type="text" placeholder="IVAN IVANOV">
+      </div>
+    </div>
+
+    <button class="pay" onclick="goSuccess()">Оплатить <span id="pay-amount">5 000 ₽</span></button>
+    <div class="lock-note">🔒 Платёж защищён и обрабатывается �Kassa</div>
+    <div style="text-align:center;margin-top:10px"><span class="badge-yk">Безопасные платежи · �Kkassa</span></div>
+  </div>
+
+  <!-- ЭКРАН 3b: оплата через Telegram Stars -->
+  <div id="screen-stars" class="screen hidden">
+    <span class="back-link" onclick="goMethod()">← Способ оплаты</span>
+    <div class="step-label">Оплата обещания</div>
+    <h1>Плата через Stars</h1>
+
+    <div class="card">
+      <div class="stars-amount">
+        <div class="n">⭐ <span id="stars-count">5000</span></div>
+        <div class="l">≈ <span id="stars-rub">5 000 ₽</span> по курсу Telegram</div>
+      </div>
+      <hr>
+      <div class="row"><span>Обещание</span><span>«Без сигарет»</span></div>
+      <div class="row"><span>Заказ</span><span>№ SS-10482</span></div>
+    </div>
+
+    <button class="pay stars" onclick="goSuccess()">Оплатить ⭐ <span id="stars-pay-amount">5000</span></button>
+    <div class="lock-note">🔒 Платёж обрабатывается Telegram</div>
+  </div>
+
+  <!-- ЭКРАН 4: успех -->
+  <div id="screen-success" class="screen hidden">
+    <div class="success" style="display:block">
+      <div class="tick">✓</div>
+      <h2>Платёж принят</h2>
+      <p class="muted" id="success-text">5 000 ₽ приняты в качестве обещания «Без сигарет». Деньги вернутся, если ты дойдёшь до цели.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let amount = 5000;
+  function pick(v, el) {
+    amount = v;
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('custom-amount').value = '';
+  }
+  function onCustom(v) {
+    const n = parseInt(v.replace(/\D/g, ''), 10);
+    if (Number.isFinite(n) && n > 0) {
+      amount = Math.min(n, 20000);
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    }
+  }
+  function fmt(n) { return n.toLocaleString('ru-RU') + ' ₽'; }
+  function showOnly(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+    document.getElementById(id).classList.remove('hidden');
+    window.scrollTo(0,0);
+  }
+  function goMethod() {
+    document.getElementById('method-amount').textContent = fmt(amount);
+    showOnly('screen-method');
+  }
+  function goStake() { showOnly('screen-stake'); }
+  function goCheckout() {
+    document.getElementById('sum-label').textContent = fmt(amount);
+    document.getElementById('total-label').textContent = fmt(amount);
+    document.getElementById('pay-amount').textContent = fmt(amount);
+    showOnly('screen-checkout');
+  }
+  function goStars() {
+    document.getElementById('stars-count').textContent = amount;
+    document.getElementById('stars-rub').textContent = fmt(amount);
+    document.getElementById('stars-pay-amount').textContent = amount;
+    showOnly('screen-stars');
+  }
+  function goSuccess() {
+    document.getElementById('success-text').textContent =
+      fmt(amount) + ' приняты в качестве обещания «Без сигарет». Деньги вернутся, если ты дойдёшь до цели.';
+    showOnly('screen-success');
+  }
+</script>
+</body>
+</html>
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Оплата ставки — Сила Слова</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
