@@ -163,6 +163,33 @@
   }
   window.openGroup = openGroup;
 
+  // ---------- юридические документы — те же 5, что в боте (см. LEGAL_URLS в бот/index.ts),
+  // отдельная копия здесь намеренно: страница на GitHub Pages, а не общий модуль (см. паттерн
+  // дублирования, принятый в проекте для Edge Functions — здесь та же логика для фронта).
+  const LEGAL_BASE = "https://maksimails.github.io/sila-slova-app/legal";
+  const LEGAL_DOCS = [
+    { title: "Публичная оферта", url: LEGAL_BASE + "/oferta.html" },
+    { title: "Правила сервиса", url: LEGAL_BASE + "/pravila.html" },
+    { title: "Политика конфиденциальности", url: LEGAL_BASE + "/privacy.html" },
+    { title: "Согласие на обработку данных", url: LEGAL_BASE + "/soglasie-pd.html" },
+    { title: "Согласие на публичность", url: LEGAL_BASE + "/soglasie-public.html" },
+  ];
+  function openLegalDoc(url) {
+    if (tg && typeof tg.openLink === "function") tg.openLink(url);
+    else window.open(url, "_blank");
+  }
+  window.openLegalDoc = openLegalDoc;
+  window.renderLegal = function () {
+    const app = document.getElementById("app");
+    app.innerHTML =
+      '<div class="section-title">Документы</div>' +
+      '<div class="muted" style="margin-bottom:14px">Оферта, правила сервиса и согласия на обработку данных.</div>' +
+      LEGAL_DOCS.map(function (doc) {
+        return '<div class="card" style="cursor:pointer" onclick="openLegalDoc(\'' + doc.url + '\')">📄 ' + esc(doc.title) + '</div>';
+      }).join("") +
+      '<button class="btn-secondary" onclick="renderHome()">На главный экран</button>';
+  };
+
   async function api(path, opts) {
     opts = opts || {};
     const isForm = opts.body instanceof FormData;
@@ -225,7 +252,7 @@
 
   function footerNav() {
     const bellBadge = ctx.unreadCount > 0 ? '<span style="background:#c0392f;color:#fff;border-radius:10px;padding:1px 6px;font-size:11px;margin-left:4px">' + ctx.unreadCount + '</span>' : '';
-    return '<div class="footer-nav"><a onclick="renderNotifications()">🔔 Уведомления' + bellBadge + '</a><a onclick="renderProfile()">👤 Профиль</a><a onclick="openGroup()">👥 Наша группа</a><a onclick="showInfo()">Как это работает</a><a onclick="closeApp()">Поддержка — в чате</a></div>';
+    return '<div class="footer-nav"><a onclick="renderNotifications()">🔔 Уведомления' + bellBadge + '</a><a onclick="renderProfile()">👤 Профиль</a><a onclick="openGroup()">👥 Наша группа</a><a onclick="showInfo()">Как это работает</a><a onclick="renderLegal()">📄 Документы</a><a onclick="closeApp()">Поддержка — в чате</a></div>';
   }
 
   // ---------- экран уведомлений ----------
@@ -291,12 +318,14 @@
     if (pending.length) {
       html += '<div class="muted" style="margin-bottom:10px">Ждут оплаты, чтобы стать словом:</div>';
       html += pending.map(function (p) {
+        const pCur = p.currency === "RUB" ? "RUB" : "XTR";
+        const pUnit = pCur === "RUB" ? " ₽" : " ⭐";
         return '<div class="bet-card" style="border-style:dashed">' +
           '<div class="top"><div class="goal">' + esc(p.goal) + '</div>' +
           '<div class="badge">⏳ #' + p.id + "</div></div>" +
           '<div class="meta">' + TYPES[p.type] + " · " + (p.mode === "public" ? "Публично" : "Лично") + "</div>" +
-          '<div class="meta">Видео записано. Без ' + p.stake + ' ⭐ карточка не публикуется.</div>' +
-          '<button onclick="payPendingStake(' + p.id + "," + p.stake + ')">Оплатить ' + p.stake + " ⭐ и опубликовать</button>" +
+          '<div class="meta">Видео записано. Без ' + p.stake + pUnit + ' карточка не публикуется.</div>' +
+          '<button onclick="payPendingStake(' + p.id + "," + p.stake + ",'" + pCur + "')\">Оплатить " + p.stake + pUnit + " и опубликовать</button>" +
           "</div>";
       }).join("");
     }
@@ -558,13 +587,20 @@
     return false;
   }
 
-  window.payPendingStake = async function (betId, stake) {
+  window.payPendingStake = async function (betId, stake, currency) {
     const app = document.getElementById("app");
     app.innerHTML = emptyMsg("Открываю оплату…");
+    const cur = currency === "RUB" ? "RUB" : "XTR";
     try {
-      const r = await api("/invoice", { method: "POST", body: JSON.stringify({ bet_id: betId, stake: stake }) });
+      const r = await api("/invoice", { method: "POST", body: JSON.stringify({ bet_id: betId, stake: stake, currency: cur }) });
       const data = await r.json();
-      if (!r.ok || !data.invoice_link) { await refreshStatus(); renderHome(); return; }
+      if (!r.ok) { await refreshStatus(); renderHome(); return; }
+      if (cur === "RUB") {
+        if (!data.confirmation_url) { await refreshStatus(); renderHome(); return; }
+        await openCardPayment(data.confirmation_url, betId);
+        return;
+      }
+      if (!data.invoice_link) { await refreshStatus(); renderHome(); return; }
       if (!tg || typeof tg.openInvoice !== "function") { await refreshStatus(); renderHome(); return; }
       tg.openInvoice(data.invoice_link, async function (status) {
         if (status === "paid") {
@@ -579,6 +615,31 @@
       await refreshStatus();
       renderHome();
     }
+  };
+
+  // карта/ЮKassa: страница оплаты открывается вовне (tg.openLink), Telegram не даёт
+  // синхронный колбэк как для Stars-инвойса — узнаём результат через поллинг статуса
+  // ставки (вебхук YuKassa переводит её в active почти сразу после успешной оплаты).
+  window.openCardPayment = async function (confirmationUrl, betId) {
+    const app = document.getElementById("app");
+    try {
+      if (tg && typeof tg.openLink === "function") {
+        tg.openLink(confirmationUrl, { try_instant_view: false });
+      } else {
+        window.open(confirmationUrl, "_blank");
+      }
+    } catch (e) {
+      window.open(confirmationUrl, "_blank");
+    }
+    app.innerHTML = emptyMsg("Открыл страницу оплаты. Вернись сюда после оплаты картой — проверяю статус…");
+    const ok = await pollUntilActive(betId, 15, 2000);
+    if (!ok) {
+      app.innerHTML = emptyMsg("Ещё не вижу оплату. Если платёж прошёл — подожди немного и обнови экран.") +
+        '<button class="btn-secondary" onclick="refreshStatus().then(renderHome)">Обновить</button>';
+      return;
+    }
+    await refreshStatus();
+    renderHome();
   };
 
   window.setPersona = async function (betId, persona) {
@@ -1106,21 +1167,39 @@
           '<div id="f-err" class="err"></div>';
       }
     } else if (name === "stake") {
-      body = "<h2>Ставка</h2>" +
-        '<div class="muted" style="margin-bottom:10px">Сумма в Stars — символическая ставка усиливает решимость. Выше ставка — выше очки драйва.' +
-        (d.kind === "challenge" ? " В Вызове ставка одинаковая для обеих сторон." : "") + "</div>" +
-        '<div class="chips">' +
-        '<div class="chip" onclick="pickStake(0)">Без ставки</div>' +
-        '<div class="chip" onclick="pickStake(100)">100 ⭐</div>' +
-        '<div class="chip" onclick="pickStake(1000)">1000 ⭐</div>' +
-        '<div class="chip" onclick="pickStake(10000)">10000 ⭐</div></div>' +
-        '<div class="muted" style="margin:12px 0 6px">Или своя сумма:</div>' +
-        '<input id="f-stake" type="text" inputmode="numeric" placeholder="Например: 250" value="' + (d.stake || "") + '" oninput="onStakeInput(this.value)">' +
-        '<div id="stake-note" class="muted" style="margin-top:8px">' + (d.stake ? d.stake + " ⭐ будет списано при подтверждении." : "Пока без ставки — только слово.") + "</div>" +
-        '<div class="info-box" style="margin-top:14px"><b style="display:block;margin-bottom:4px">Нет звёзд, а платёж из России?</b>' +
-        '<div class="muted" style="font-size:13px;margin-bottom:8px">Купить Stars можно через Telegram-бота @vseznayka_stars_bot — самый простой вариант, прямо в чате.</div>' +
-        '<a href="https://t.me/vseznayka_stars_bot" target="_blank" style="display:block;text-align:center;padding:10px;border-radius:10px;border:1px solid var(--border);color:var(--gold2);text-decoration:none;font-size:14px">Открыть @vseznayka_stars_bot</a>' +
-        '<div class="muted" style="font-size:11.5px;margin-top:8px">Это сторонний сервис, не связанный с Сила Слова. Мы не можем гарантировать его работу — прежде чем платить, проверь отзывы сам.</div></div>';
+      const cur = d.currency === "RUB" ? "RUB" : "XTR";
+      const methodToggle =
+        '<div class="chips" style="margin-bottom:14px">' +
+        '<div class="chip' + (cur === "XTR" ? " active-chip" : "") + '" onclick="pickCurrency(\'XTR\')">⭐ Stars</div>' +
+        '<div class="chip' + (cur === "RUB" ? " active-chip" : "") + '" onclick="pickCurrency(\'RUB\')">💳 Карта, ₽</div></div>';
+      if (cur === "RUB") {
+        body = "<h2>Обещание</h2>" + methodToggle +
+          '<div class="muted" style="margin-bottom:10px">Сумма в рублях, от 1 000 до 20 000 ₽ — при выполнении вернём 90% на карту (10% — разовая стоимость активации).' +
+          (d.kind === "challenge" ? " В Вызове сумма одинаковая для обеих сторон." : "") + "</div>" +
+          '<div class="chips">' +
+          '<div class="chip" onclick="pickStake(1000)">1 000 ₽</div>' +
+          '<div class="chip" onclick="pickStake(5000)">5 000 ₽</div>' +
+          '<div class="chip" onclick="pickStake(20000)">20 000 ₽</div></div>' +
+          '<div class="muted" style="margin:12px 0 6px">Или своя сумма (1 000–20 000 ₽):</div>' +
+          '<input id="f-stake" type="text" inputmode="numeric" placeholder="Например: 3000" value="' + (d.stake || "") + '" oninput="onStakeInput(this.value)">' +
+          '<div id="stake-note" class="muted" style="margin-top:8px">' + (d.stake ? d.stake + " ₽ спишется картой при подтверждении, 90% вернётся при выполнении." : "Минимум 1 000 ₽ — без ставки только по Stars.") + "</div>";
+      } else {
+        body = "<h2>Ставка</h2>" + methodToggle +
+          '<div class="muted" style="margin-bottom:10px">Сумма в Stars — символическая ставка усиливает решимость. Выше ставка — выше очки драйва.' +
+          (d.kind === "challenge" ? " В Вызове ставка одинаковая для обеих сторон." : "") + "</div>" +
+          '<div class="chips">' +
+          '<div class="chip" onclick="pickStake(0)">Без ставки</div>' +
+          '<div class="chip" onclick="pickStake(100)">100 ⭐</div>' +
+          '<div class="chip" onclick="pickStake(1000)">1000 ⭐</div>' +
+          '<div class="chip" onclick="pickStake(10000)">10000 ⭐</div></div>' +
+          '<div class="muted" style="margin:12px 0 6px">Или своя сумма:</div>' +
+          '<input id="f-stake" type="text" inputmode="numeric" placeholder="Например: 250" value="' + (d.stake || "") + '" oninput="onStakeInput(this.value)">' +
+          '<div id="stake-note" class="muted" style="margin-top:8px">' + (d.stake ? d.stake + " ⭐ будет списано при подтверждении." : "Пока без ставки — только слово.") + "</div>" +
+          '<div class="info-box" style="margin-top:14px"><b style="display:block;margin-bottom:4px">Нет звёзд, а платёж из России?</b>' +
+          '<div class="muted" style="font-size:13px;margin-bottom:8px">Купить Stars можно через Telegram-бота @vseznayka_stars_bot — самый простой вариант, прямо в чате, либо переключись на «Карта, ₽» выше.</div>' +
+          '<a href="https://t.me/vseznayka_stars_bot" target="_blank" style="display:block;text-align:center;padding:10px;border-radius:10px;border:1px solid var(--border);color:var(--gold2);text-decoration:none;font-size:14px">Открыть @vseznayka_stars_bot</a>' +
+          '<div class="muted" style="font-size:11.5px;margin-top:8px">Это сторонний сервис, не связанный с Сила Слова. Мы не можем гарантировать его работу — прежде чем платить, проверь отзывы сам.</div></div>';
+      }
     } else if (name === "review") {
       const isChallenge = d.kind === "challenge";
       const rows = [];
@@ -1145,14 +1224,19 @@
       } else if (d.type !== "result") {
         rows.push('<div class="row"><span>Срок</span><span>' + formatRuDate(d._date) + " · " + d.days + " дн.</span></div>");
       }
+      const curUnit = d.currency === "RUB" ? " ₽" : " ⭐";
       rows.push('<div class="row"><span>Видео</span><span>' + (d.videoFile ? "прикреплено ✓" : "нет") + "</span></div>");
-      rows.push('<div class="row"><span>Ставка</span><span>' + (d.stake ? d.stake + " ⭐" : "без ставки") + "</span></div>");
+      rows.push('<div class="row"><span>Ставка</span><span>' + (d.stake ? d.stake + curUnit : "без ставки") + "</span></div>");
       body = "<h2>Проверь и вперёд</h2>" +
         '<div class="card">' + rows.join("") + "</div>" +
         '<div class="muted" style="text-align:center;margin-bottom:16px">' +
         (isChallenge
-          ? "Отправляем вызов сопернику" + (d.stake ? " и откроется оплата твоей ставки " + d.stake + " ⭐" : "") + ". Оба стартуете вместе, как только он примет" + (d.stake ? " и тоже оплатит" : "") + "."
-          : (d.stake ? "Подтверждаешь — сразу откроется оплата " + d.stake + " ⭐. Карточка публикуется сразу после оплаты, не выходя из приложения." : "Подтверждаешь — публикуем сразу, не выходя из приложения.")) +
+          ? "Отправляем вызов сопернику" + (d.stake ? " и откроется оплата твоей ставки " + d.stake + curUnit : "") + ". Оба стартуете вместе, как только он примет" + (d.stake ? " и тоже оплатит" : "") + "."
+          : (d.stake
+              ? (d.currency === "RUB"
+                  ? "Подтверждаешь — откроется страница оплаты картой на " + d.stake + " ₽. Карточка публикуется сразу после оплаты."
+                  : "Подтверждаешь — сразу откроется оплата " + d.stake + " ⭐. Карточка публикуется сразу после оплаты, не выходя из приложения.")
+              : "Подтверждаешь — публикуем сразу, не выходя из приложения.")) +
         "</div>";
     }
 
@@ -1371,18 +1455,32 @@
     renderWizard();
   };
 
+  function stakeNoteText(n) {
+    if (ctx.draft.currency === "RUB") {
+      if (!n) return "Минимум 1 000 ₽ — без ставки только по Stars.";
+      if (n < 1000) return "Минимум 1 000 ₽.";
+      return n + " ₽ спишется картой при подтверждении, 90% вернётся при выполнении.";
+    }
+    return n ? n + " ⭐ будет списано при подтверждении." : "Пока без ставки — только слово.";
+  }
+  window.pickCurrency = function (cur) {
+    ctx.draft.currency = cur;
+    ctx.draft.stake = 0; // сумма Stars и рублей не взаимозаменяема — сбрасываем при переключении метода
+    window.renderWizard();
+  };
   window.pickStake = function (n) {
     ctx.draft.stake = n;
     const input = document.getElementById("f-stake");
     if (input) input.value = n || "";
     const note = document.getElementById("stake-note");
-    if (note) note.textContent = n ? n + " ⭐ будет списано при подтверждении." : "Пока без ставки — только слово.";
+    if (note) note.textContent = stakeNoteText(n);
   };
   window.onStakeInput = function (v) {
     const n = parseInt(v, 10);
-    ctx.draft.stake = Number.isFinite(n) && n > 0 ? Math.min(n, 10000) : 0;
+    const max = ctx.draft.currency === "RUB" ? 20000 : 10000;
+    ctx.draft.stake = Number.isFinite(n) && n > 0 ? Math.min(n, max) : 0;
     const note = document.getElementById("stake-note");
-    if (note) note.textContent = ctx.draft.stake ? ctx.draft.stake + " ⭐ будет списано при подтверждении." : "Пока без ставки — только слово.";
+    if (note) note.textContent = stakeNoteText(ctx.draft.stake);
   };
 
   function err(msg) { const e = document.getElementById("f-err"); if (e) e.textContent = msg; }
@@ -1427,6 +1525,7 @@
     if (name === "skipDays") {
       if (!d.allowed_skip_weekdays || !d.allowed_skip_weekdays.length) return err("Выбери хотя бы один день.");
     }
+    if (name === "stake" && d.currency === "RUB" && d.stake > 0 && d.stake < 1000) return err("Минимум 1 000 ₽ — увеличь сумму или выбери Stars.");
     if (name === "witness") {
       const phone = document.getElementById("f-wphone").value.trim();
       const wtg = document.getElementById("f-wtg").value.trim();
@@ -1518,7 +1617,7 @@
     try {
       const d = ctx.draft;
       const fd = new FormData();
-      const draftPayload = { mode: d.mode, type: d.type, goal: d.goal, days: d.days, stake: d.stake || 0 };
+      const draftPayload = { mode: d.mode, type: d.type, goal: d.goal, days: d.days, stake: d.stake || 0, currency: d.currency === "RUB" ? "RUB" : "XTR" };
       if (d.type === "result") {
         draftPayload.point_a = d.point_a;
         draftPayload.motivation = d.motivation;
@@ -1543,11 +1642,36 @@
         return;
       }
       ctx.lastWitnessInvite = data.witness_invite || null;
-      if (data.pending) { openStakeInvoice(data.invoice_link, data.bet_id); }
+      if (data.pending && data.currency === "RUB") {
+        if (!data.confirmation_url) {
+          app.innerHTML = emptyMsg("Оплата картой пока недоступна. Ставка сохранена как «ждёт оплаты» — попробуй ещё раз из списка ставок.") +
+            '<button class="btn-secondary" onclick="reloadAndHome()">К списку ставок</button>';
+          return;
+        }
+        app.innerHTML = emptyMsg("Открываю оплату картой…");
+        const ok = await openCardPaymentDuringCreate(data.confirmation_url, data.bet_id);
+        finishWizard(data.bet_id, true, ok ? "active" : "processing");
+      }
+      else if (data.pending) { openStakeInvoice(data.invoice_link, data.bet_id); }
       else { await refreshStatus(); finishWizard(data.bet_id, true, null); }
     } catch (e) {
       app.innerHTML = emptyMsg("Ошибка соединения. Попробуй ещё раз.") + '<button onclick="renderWizard()">Назад к форме</button>';
     }
+  }
+
+  // вариант openCardPayment для мастера создания: не рендерит renderHome сам (это сделает
+  // finishWizard), а просто открывает ссылку и дожидается активации, возвращая true/false.
+  async function openCardPaymentDuringCreate(confirmationUrl, betId) {
+    try {
+      if (tg && typeof tg.openLink === "function") {
+        tg.openLink(confirmationUrl, { try_instant_view: false });
+      } else {
+        window.open(confirmationUrl, "_blank");
+      }
+    } catch (e) {
+      window.open(confirmationUrl, "_blank");
+    }
+    return await pollUntilActive(betId, 15, 2000);
   }
 
   // ставка > 0: карточка ЕЩЁ НЕ существует для остальных — она публикуется только после
