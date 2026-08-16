@@ -254,7 +254,7 @@
 
   function footerNav() {
     const bellBadge = ctx.unreadCount > 0 ? '<span style="background:#c0392f;color:#fff;border-radius:10px;padding:1px 6px;font-size:11px;margin-left:4px">' + ctx.unreadCount + '</span>' : '';
-    return '<div class="footer-nav"><a onclick="renderNotifications()">🔔 Уведомления' + bellBadge + '</a><a onclick="renderProfile()">👤 Профиль</a><a onclick="openGroup()">👥 Наша группа</a><a onclick="showInfo()">Как это работает</a><a onclick="renderLegal()">📄 Документы</a><a onclick="closeApp()">Поддержка — в чате</a></div>';
+    return '<div class="footer-nav"><a onclick="renderNotifications()">🔔 Уведомления' + bellBadge + '</a><a onclick="renderProfile()">👤 Профиль</a><a onclick="renderWallet()">💰 Кошелёк</a><a onclick="openGroup()">👥 Наша группа</a><a onclick="showInfo()">Как это работает</a><a onclick="renderLegal()">📄 Документы</a><a onclick="closeApp()">Поддержка — в чате</a></div>';
   }
 
   // ---------- экран уведомлений ----------
@@ -436,8 +436,139 @@
       '<div id="bet-msg" class="muted" style="text-align:center;margin-top:10px"></div>' +
       '<div class="section-title">История отчётов</div>' +
       '<div id="bet-history" class="muted">Загрузка…</div>' +
-      '<button class="btn-secondary" onclick="renderHome()">К списку ставок</button>';
+      '<button class="btn-secondary" onclick="renderHome()">К списку ставок</button>' +
+      '<div style="text-align:center;margin-top:22px"><span onclick="openGiveUp(' + b.id + ')" class="muted" style="font-size:11px;text-decoration:underline;cursor:pointer;opacity:.55">сдать ставку</span></div>';
     loadBetHistory(b.id);
+  };
+
+  // ---------- сдача ставки — намеренно спрятанная и многошаговая (не кнопка, а мелкая ссылка
+  // внизу карточки; см. бот/index.ts — тот же протокол: запрос → печатное подтверждение фразой
+  // в 10-минутном окне → отменяемый суточный кулдаун → финализация только кроном бота) ----------
+  const GIVEUP_PHRASE = "ПОДТВЕРЖДАЮ";
+  function fmtMskDateTime(iso) {
+    try {
+      return new Date(iso).toLocaleString("ru-RU", { timeZone: "Europe/Moscow", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) + " МСК";
+    } catch (e) { return iso; }
+  }
+  window.openGiveUp = async function (betId) {
+    const app = document.getElementById("app");
+    app.innerHTML = emptyMsg("Секунду…");
+    try {
+      const r = await api("/bet-giveup-status?bet_id=" + betId);
+      const data = await r.json();
+      if (data.giveup && data.giveup.status === "cooldown") { renderGiveUpCooldown(betId, data.giveup.finalize_at); return; }
+      renderGiveUpIntro(betId);
+    } catch (e) {
+      app.innerHTML = emptyMsg("Ошибка соединения.") + '<button class="btn-secondary" onclick="renderBetDetail()">Назад</button>';
+    }
+  };
+  function renderGiveUpIntro(betId) {
+    const app = document.getElementById("app");
+    const b = (ctx.bets || []).find(function (x) { return x.id === betId; });
+    const isDuel = !!(b && b.challenge_id);
+    const stakeNote = b && b.stake > 0 ? "Ставка (" + b.stake + " ⭐) сгорает полностью — как при провале по сроку, без возврата." : "";
+    const duelNote = isDuel ? "Это Вызов: если сдашься, соперник продолжает один — ваша связка разрывается." : "";
+    app.innerHTML =
+      '<div class="card"><div class="big">Сдать ставку?</div>' +
+      '<div class="muted" style="margin-top:8px">' + esc((b && b.goal) || "") + '</div></div>' +
+      '<div class="muted" style="margin-top:14px;line-height:1.5">' +
+      'Это не отменяется по щелчку — решение весит столько же, сколько само слово, которое ты давал(а).' +
+      (stakeNote ? '<br><br>' + stakeNote : '') +
+      (duelNote ? '<br><br>' + duelNote : '') +
+      '<br><br>Дальше будет окно на подтверждение и ещё сутки, за которые можно передумать.' +
+      '</div>' +
+      '<button onclick="startGiveUp(' + betId + ')">Всё равно продолжить</button>' +
+      '<button class="btn-secondary" onclick="renderBetDetail()">Не сейчас</button>';
+  }
+  window.startGiveUp = async function (betId) {
+    const app = document.getElementById("app");
+    app.innerHTML = emptyMsg("Секунду…");
+    try {
+      const r = await api("/bet-giveup-request", { method: "POST", body: JSON.stringify({ bet_id: betId }) });
+      const data = await r.json();
+      if (!r.ok) {
+        app.innerHTML = emptyMsg(data.error === "already_pending" ? "Запрос уже оформлен." : "Не получилось. Попробуй ещё раз.") +
+          '<button class="btn-secondary" onclick="renderBetDetail()">Назад</button>';
+        return;
+      }
+      renderGiveUpConfirm(betId, data.confirm_deadline);
+    } catch (e) {
+      app.innerHTML = emptyMsg("Ошибка соединения.") + '<button class="btn-secondary" onclick="renderBetDetail()">Назад</button>';
+    }
+  };
+  function renderGiveUpConfirm(betId, deadlineIso) {
+    const app = document.getElementById("app");
+    app.innerHTML =
+      '<div class="card"><div class="big">Подтверждение</div>' +
+      '<div class="muted" style="margin-top:8px">Напиши ниже слово <b>' + GIVEUP_PHRASE + '</b> — это и есть подтверждение. У тебя 10 минут (до ' + fmtMskDateTime(deadlineIso) + ').</div></div>' +
+      '<input id="giveup-input" placeholder="' + GIVEUP_PHRASE + '" autocomplete="off" style="text-transform:uppercase">' +
+      '<div id="giveup-msg" class="muted" style="text-align:center;margin-top:8px"></div>' +
+      '<button id="giveup-submit" disabled style="opacity:.5" onclick="submitGiveUp(' + betId + ')">Подтверждаю</button>' +
+      '<button class="btn-secondary" onclick="cancelGiveUpDraft(' + betId + ')">Передумал(а)</button>';
+    const input = document.getElementById("giveup-input");
+    const btn = document.getElementById("giveup-submit");
+    input.addEventListener("input", function () {
+      const match = input.value.trim().toUpperCase() === GIVEUP_PHRASE;
+      btn.disabled = !match;
+      btn.style.opacity = match ? "1" : ".5";
+    });
+  }
+  window.submitGiveUp = async function (betId) {
+    const input = document.getElementById("giveup-input");
+    const msgEl = document.getElementById("giveup-msg");
+    const phrase = input ? input.value.trim() : "";
+    if (msgEl) msgEl.textContent = "Секунду…";
+    try {
+      const r = await api("/bet-giveup-confirm", { method: "POST", body: JSON.stringify({ bet_id: betId, phrase: phrase }) });
+      const data = await r.json();
+      if (!r.ok) {
+        const map = { expired: "Время вышло — начни заново, если решение в силе.", phrase_mismatch: "Фраза не совпала." };
+        if (msgEl) msgEl.textContent = map[data.error] || "Не получилось.";
+        return;
+      }
+      renderGiveUpCooldown(betId, data.finalize_at);
+    } catch (e) {
+      if (msgEl) msgEl.textContent = "Ошибка соединения.";
+    }
+  };
+  window.cancelGiveUpDraft = async function (betId) {
+    try { await api("/bet-giveup-cancel", { method: "POST", body: JSON.stringify({ bet_id: betId }) }); } catch (e) { /* молча */ }
+    renderBetDetail();
+  };
+  function renderGiveUpCooldown(betId, finalizeAtIso) {
+    const app = document.getElementById("app");
+    app.innerHTML =
+      '<div class="card"><div class="big">Принято</div>' +
+      '<div class="muted" style="margin-top:8px">Сутки на передумать. Если не отменишь, ставка закроется автоматически ' + fmtMskDateTime(finalizeAtIso) + '. Ставка всё это время работает как обычно — можно отчитываться.</div></div>' +
+      '<button class="btn-secondary" onclick="cancelGiveUpDraft(' + betId + ')">Передумал(а) — отменить сдачу</button>' +
+      '<button class="btn-secondary" onclick="renderBetDetail()">Назад к ставке</button>';
+  }
+
+  // ---------- личный кошелёк — пока чистая инфраструктура (баланс + лента операций), логика
+  // начисления ещё не определена (см. бот/index.ts) ----------
+  window.renderWallet = async function () {
+    const app = document.getElementById("app");
+    app.innerHTML = emptyMsg("Загрузка…");
+    try {
+      const r = await api("/wallet");
+      const data = await r.json();
+      if (!r.ok) { app.innerHTML = emptyMsg("Не удалось загрузить."); return; }
+      const txns = data.transactions || [];
+      const historyHtml = txns.length
+        ? txns.map(function (t) {
+            const sign = t.type === "credit" ? "+" : "−";
+            const cur = t.currency === "RUB" ? "₽" : "⭐";
+            return '<div class="row"><span>' + esc(t.reason) + '</span><span>' + sign + t.amount + " " + cur + "</span></div>";
+          }).join("")
+        : '<div class="muted">Пока пусто.</div>';
+      app.innerHTML =
+        '<div class="section-title">💰 Кошелёк</div>' +
+        '<div class="card"><div class="big">' + data.balance_rub + " ₽ · " + data.balance_stars + " ⭐</div></div>" +
+        '<div class="section-title">История</div>' + historyHtml +
+        '<button class="btn-secondary" onclick="renderHome()">На главный экран</button>';
+    } catch (e) {
+      app.innerHTML = emptyMsg("Ошибка соединения.") + '<button class="btn-secondary" onclick="renderHome()">На главный экран</button>';
+    }
   };
 
   // ---------- история отчётов по конкретной ставке — используется и обычной карточкой, и Вызовом,
