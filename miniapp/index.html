@@ -66,6 +66,8 @@
   .name-confucius { font-family: 'Playfair Display', serif; font-style: italic; font-weight: 600; color: #f2e6c8; }
   .name-angela { font-family: 'Underdog', cursive; color: #ffb6d5;
     text-shadow: 0 1px 0 #7a2a4d, 0 2px 0 #6a2242, 0 3px 4px rgba(0,0,0,.7); font-size: 17px !important; }
+  .name-goblin { font-family: 'Oswald', sans-serif; font-weight: 700; letter-spacing: .02em; text-transform: uppercase;
+    color: #9dff6e; text-shadow: 0 1px 0 #2a4d1a, 0 0 8px rgba(157,255,110,.55), 0 2px 4px rgba(0,0,0,.8); font-size: 14px !important; }
 
   /* ---------- профиль игрока ---------- */
   .profile-header { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
@@ -127,13 +129,13 @@
   const API = "https://mparfxpddlkfuixminnx.supabase.co/functions/v1/miniapp";
   const initData = tg?.initData || "";
   const TYPES = { result: "Результат", habit: "Привычка", quit: "Аскеза" };
-  const PERSONAS = { confucius: "Конфуций", arnold: "Физрук Арнольд", zina: "Баба Зина 🔞", angela: "Анжела Фокс" };
+  const PERSONAS = { confucius: "Конфуций", arnold: "Физрук Арнольд", zina: "Баба Зина 🔞", angela: "Анжела Фокс", goblin: "Гоблин Дедлайна 👹" };
   // финальные портреты персонажей — те же файлы, что лежат в папке "Character Visuals",
   // залиты в этот же репозиторий на GitHub Pages рядом с index.html
   // изображения лежат в корне репозитория GitHub Pages, а этот файл — в /miniapp/,
   // поэтому путь на уровень выше (без этого префикса картинки просто 404 и не показываются)
-  const PERSONA_IMG = { confucius: "../confucius.jpg", arnold: "../coach.jpg", zina: "../baba_zina.jpg", angela: "../angela_fox.jpg" };
-  const PERSONA_FONT = { confucius: "name-confucius", arnold: "name-arnold", zina: "name-zina", angela: "name-angela" };
+  const PERSONA_IMG = { confucius: "../confucius.jpg", arnold: "../coach.jpg", zina: "../baba_zina.jpg", angela: "../angela_fox.jpg", goblin: "../goblin.jpg" };
+  const PERSONA_FONT = { confucius: "name-confucius", arnold: "name-arnold", zina: "name-zina", angela: "name-angela", goblin: "name-goblin" };
 
   // ---------- Мастер ставки v2 (см. Мастер_ставки_v2_PRD.md) ----------
   const EXAMPLES = {
