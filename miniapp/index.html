@@ -320,14 +320,12 @@
     if (pending.length) {
       html += '<div class="muted" style="margin-bottom:10px">Ждут оплаты, чтобы стать словом:</div>';
       html += pending.map(function (p) {
-        const pCur = p.currency === "RUB" ? "RUB" : "XTR";
-        const pUnit = pCur === "RUB" ? " ₽" : " ⭐";
         return '<div class="bet-card" style="border-style:dashed">' +
           '<div class="top"><div class="goal">' + esc(p.goal) + '</div>' +
           '<div class="badge">⏳ #' + p.id + "</div></div>" +
           '<div class="meta">' + TYPES[p.type] + " · " + (p.mode === "public" ? "Публично" : "Лично") + "</div>" +
-          '<div class="meta">Видео записано. Без ' + p.stake + pUnit + ' карточка не публикуется.</div>' +
-          '<button onclick="payPendingStake(' + p.id + "," + p.stake + ",'" + pCur + "')\">Оплатить " + p.stake + pUnit + " и опубликовать</button>" +
+          '<div class="meta">Видео записано. Ставка ' + p.stake + ' ₽ — оплата картой МИР на подтверждении, карточка опубликуется после подтверждения.</div>' +
+          '<button onclick="payPendingStake(' + p.id + "," + p.stake + ')">Проверить статус оплаты</button>' +
           "</div>";
       }).join("");
     }
@@ -411,7 +409,7 @@
         '<div class="p-name ' + PERSONA_FONT[key] + '">' + PERSONAS[key].replace(" 🔞", "") + "</div></div>";
     }).join("");
     const stakeLine = b.stake > 0
-      ? (b.stake_paid ? b.stake + " ⭐ (оплачено)" : b.stake + " ⭐ (не оплачено)")
+      ? (b.stake_paid ? b.stake + " ₽ (оплачено)" : b.stake + " ₽ (на подтверждении)")
       : "твоё слово";
     app.innerHTML =
       '<div class="card"><div class="muted">Карточка #' + b.id + "</div>" +
@@ -427,7 +425,7 @@
           '<video src="' + escAttr(b.video_url) + '" controls playsinline webkit-playsinline="true" preload="metadata" style="width:100%;height:auto;max-height:70vh;background:#000;border-radius:12px;display:block;margin-bottom:12px"></video>' +
           commentsToggleHtml(b.id, 0, "bet-video-cmt")
         : "") +
-      (b.stake > 0 && !b.stake_paid ? '<button onclick="payStake(' + b.id + "," + b.stake + ')">Оплатить ' + b.stake + " ⭐</button>" : "") +
+      (b.stake > 0 && !b.stake_paid ? '<button class="btn-secondary" onclick="payStake(' + b.id + "," + b.stake + ')">Ставка ' + b.stake + " ₽ — на подтверждении</button>" : "") +
       (b.reported_today
         ? '<button class="btn-secondary" disabled style="opacity:.6">Отчёт за сегодня уже отправлен</button>'
         : '<button onclick="sendReport(' + b.id + ')">Отправить отчёт</button>') +
@@ -466,7 +464,7 @@
     const app = document.getElementById("app");
     const b = (ctx.bets || []).find(function (x) { return x.id === betId; });
     const isDuel = !!(b && b.challenge_id);
-    const stakeNote = b && b.stake > 0 ? "Ставка (" + b.stake + " ⭐) сгорает полностью — как при провале по сроку, без возврата." : "";
+    const stakeNote = b && b.stake > 0 ? "Ставка (" + b.stake + " ₽) сгорает полностью — как при провале по сроку, без возврата." : "";
     const duelNote = isDuel ? "Это Вызов: если сдашься, соперник продолжает один — ваша связка разрывается." : "";
     app.innerHTML =
       '<div class="card"><div class="big">Сдать ставку?</div>' +
@@ -685,27 +683,15 @@
     }
   };
 
+  // Оплата картой МИР сейчас на подтверждении у платёжной системы — реального инвойса не
+  // создаётся, ставка просто фиксируется как «ждёт оплаты».
   window.payStake = async function (betId, stake) {
     const msgEl = document.getElementById("bet-msg");
-    if (msgEl) msgEl.textContent = "Открываю оплату…";
+    if (msgEl) msgEl.textContent = "Секунду…";
     try {
-      const r = await api("/invoice", { method: "POST", body: JSON.stringify({ bet_id: betId, stake: stake }) });
-      const data = await r.json();
-      if (!r.ok || !data.invoice_link) { if (msgEl) msgEl.textContent = "Не получилось создать оплату."; return; }
-      if (!tg || typeof tg.openInvoice !== "function") { if (msgEl) msgEl.textContent = "Оплата недоступна в этой версии Telegram."; return; }
-      tg.openInvoice(data.invoice_link, function (status) {
-        if (status === "paid") {
-          const b = (ctx.bets || []).find(function (x) { return x.id === betId; });
-          if (b) b.stake_paid = true;
-          renderBetDetail();
-        } else {
-          const el = document.getElementById("bet-msg");
-          if (el) el.textContent = "Оплата не завершена.";
-        }
-      });
-    } catch (e) {
-      if (msgEl) msgEl.textContent = "Ошибка соединения.";
-    }
+      await api("/invoice", { method: "POST", body: JSON.stringify({ bet_id: betId, stake: stake }) });
+    } catch (e) { /* молча — сообщение ниже одно и то же в любом случае */ }
+    if (msgEl) msgEl.textContent = "Оплата картой МИР сейчас на подтверждении у платёжной системы. Как только подключение будет готово — спишем и уведомим.";
   };
 
   // ждём, пока вебхук бота обработает successful_payment и переведёт ставку в active —
@@ -720,39 +706,20 @@
     return false;
   }
 
-  window.payPendingStake = async function (betId, stake, currency) {
+  window.payPendingStake = async function (betId, stake) {
     const app = document.getElementById("app");
-    app.innerHTML = emptyMsg("Открываю оплату…");
-    const cur = currency === "RUB" ? "RUB" : "XTR";
+    app.innerHTML = emptyMsg("Секунду…");
     try {
-      const r = await api("/invoice", { method: "POST", body: JSON.stringify({ bet_id: betId, stake: stake, currency: cur }) });
-      const data = await r.json();
-      if (!r.ok) { await refreshStatus(); renderHome(); return; }
-      if (cur === "RUB") {
-        if (!data.confirmation_url) { await refreshStatus(); renderHome(); return; }
-        await openCardPayment(data.confirmation_url, betId);
-        return;
-      }
-      if (!data.invoice_link) { await refreshStatus(); renderHome(); return; }
-      if (!tg || typeof tg.openInvoice !== "function") { await refreshStatus(); renderHome(); return; }
-      tg.openInvoice(data.invoice_link, async function (status) {
-        if (status === "paid") {
-          app.innerHTML = emptyMsg("Оплата прошла — публикую…");
-          await pollUntilActive(betId, 8, 1200);
-        } else {
-          await refreshStatus();
-        }
-        renderHome();
-      });
-    } catch (e) {
-      await refreshStatus();
-      renderHome();
-    }
+      await api("/invoice", { method: "POST", body: JSON.stringify({ bet_id: betId, stake: stake }) });
+    } catch (e) { /* молча — сообщение ниже одно и то же в любом случае */ }
+    await refreshStatus();
+    app.innerHTML = emptyMsg("Оплата картой МИР сейчас на подтверждении у платёжной системы. Ставка сохранена — спишем и опубликуем, как только подключение будет готово.") +
+      '<button class="btn-secondary" onclick="renderHome()">На главный экран</button>';
   };
 
-  // карта/ЮKassa: страница оплаты открывается вовне (tg.openLink), Telegram не даёт
-  // синхронный колбэк как для Stars-инвойса — узнаём результат через поллинг статуса
-  // ставки (вебхук YuKassa переводит её в active почти сразу после успешной оплаты).
+  // ОТКЛЮЧЕНО (август 2026): карта МИР пока на подтверждении, YuKassa/Stars убраны из
+  // платёжных путей (см. submitCreate/payStake/payPendingStake). Функция не вызывается нигде —
+  // оставлена дормантной как готовый redirect+poll-паттерн для будущего подключения.
   window.openCardPayment = async function (confirmationUrl, betId) {
     const app = document.getElementById("app");
     try {
@@ -857,7 +824,7 @@
       '<div class="row"><span>Старт</span><span>' + formatRuDate(c.start_date) + '</span></div>' +
       '<div class="row"><span>Срок</span><span>' + c.duration_days + ' дн.</span></div>' +
       '<div class="row"><span>Пруф</span><span>' + esc(c.proof_format || "") + '</span></div>' +
-      '<div class="row"><span>Ставка</span><span>' + (c.stake ? c.stake + ' ⭐' : 'без ставки') + '</span></div>' +
+      '<div class="row"><span>Ставка</span><span>' + (c.stake ? c.stake + ' ₽' : 'без ставки') + '</span></div>' +
       '</div>' +
       '<div class="card">' + playersBlock + '</div>' +
       buildChallengeVideos(c) +
@@ -951,7 +918,7 @@
       '<div class="row"><span>Старт</span><span>' + formatRuDate(ch.start_date) + '</span></div>' +
       '<div class="row"><span>Срок</span><span>' + ch.duration_days + ' дн.</span></div>' +
       '<div class="row"><span>Пруф</span><span>' + esc(ch.proof_format) + '</span></div>' +
-      '<div class="row"><span>Ставка</span><span>' + (ch.stake ? ch.stake + ' ⭐ с каждой стороны' : 'без ставки') + '</span></div></div>' +
+      '<div class="row"><span>Ставка</span><span>' + (ch.stake ? ch.stake + ' ₽ с каждой стороны' : 'без ставки') + '</span></div></div>' +
       videoBlock +
       '<div class="muted" style="text-align:center;margin-bottom:16px">Условия менять нельзя на этом шаге — предложить правки можно будет после того, как оба согласятся.</div>' +
       '<button onclick="startChallengeAcceptVideo()">Принять вызов</button>' +
@@ -1070,19 +1037,18 @@
         app.innerHTML = emptyMsg("Не получилось (" + (data.error || "ошибка") + ").") + '<button class="btn-secondary" onclick="drawChallengeAcceptVideo()">Назад</button>';
         return;
       }
-      if (data.pending) { openStakeInvoice(data.invoice_link, data.bet_id, "challengeAccept"); }
-      else { finishChallengeAccept(false); }
+      finishChallengeAccept(!!data.pending);
     } catch (e) {
       app.innerHTML = emptyMsg("Ошибка соединения.") + '<button class="btn-secondary" onclick="drawChallengeAcceptVideo()">Назад</button>';
     }
   }
   window.submitChallengeAccept = submitChallengeAccept;
-  function finishChallengeAccept(paid) {
+  function finishChallengeAccept(stakePending) {
     const app = document.getElementById("app");
     app.innerHTML =
       '<div class="card" style="text-align:center"><div style="font-size:40px;margin-bottom:8px">⚔️</div>' +
       '<div style="font-size:17px;margin-bottom:6px">Вызов принят</div>' +
-      '<div class="muted">' + (paid ? "Ставка оплачена. " : "") + 'Как только настанет дата старта — начнёте оба одновременно.</div></div>' +
+      '<div class="muted">' + (stakePending ? "Ставка встала в очередь на оплату картой МИР (сейчас на подтверждении). " : "") + 'Как только настанет дата старта — начнёте оба одновременно.</div></div>' +
       '<button class="btn-secondary" onclick="reloadAndHome()">На главный экран</button>';
   }
 
@@ -1300,39 +1266,21 @@
           '<div id="f-err" class="err"></div>';
       }
     } else if (name === "stake") {
-      const cur = d.currency === "RUB" ? "RUB" : "XTR";
-      const methodToggle =
-        '<div class="chips" style="margin-bottom:14px">' +
-        '<div class="chip' + (cur === "XTR" ? " active-chip" : "") + '" onclick="pickCurrency(\'XTR\')">⭐ Stars</div>' +
-        '<div class="chip' + (cur === "RUB" ? " active-chip" : "") + '" onclick="pickCurrency(\'RUB\')">💳 Карта, ₽</div></div>';
-      if (cur === "RUB") {
-        body = "<h2>Обещание</h2>" + methodToggle +
-          '<div class="muted" style="margin-bottom:10px">Сумма в рублях, от 1 000 до 20 000 ₽ — при выполнении вернём 90% на карту (10% — разовая стоимость активации).' +
-          (d.kind === "challenge" ? " В Вызове сумма одинаковая для обеих сторон." : "") + "</div>" +
-          '<div class="chips">' +
-          '<div class="chip" onclick="pickStake(1000)">1 000 ₽</div>' +
-          '<div class="chip" onclick="pickStake(5000)">5 000 ₽</div>' +
-          '<div class="chip" onclick="pickStake(20000)">20 000 ₽</div></div>' +
-          '<div class="muted" style="margin:12px 0 6px">Или своя сумма (1 000–20 000 ₽):</div>' +
-          '<input id="f-stake" type="text" inputmode="numeric" placeholder="Например: 3000" value="' + (d.stake || "") + '" oninput="onStakeInput(this.value)">' +
-          '<div id="stake-note" class="muted" style="margin-top:8px">' + (d.stake ? d.stake + " ₽ спишется картой при подтверждении, 90% вернётся при выполнении." : "Минимум 1 000 ₽ — без ставки только по Stars.") + "</div>";
-      } else {
-        body = "<h2>Ставка</h2>" + methodToggle +
-          '<div class="muted" style="margin-bottom:10px">Сумма в Stars — символическая ставка усиливает решимость. Выше ставка — выше очки драйва.' +
-          (d.kind === "challenge" ? " В Вызове ставка одинаковая для обеих сторон." : "") + "</div>" +
-          '<div class="chips">' +
-          '<div class="chip" onclick="pickStake(0)">Без ставки</div>' +
-          '<div class="chip" onclick="pickStake(100)">100 ⭐</div>' +
-          '<div class="chip" onclick="pickStake(1000)">1000 ⭐</div>' +
-          '<div class="chip" onclick="pickStake(10000)">10000 ⭐</div></div>' +
-          '<div class="muted" style="margin:12px 0 6px">Или своя сумма:</div>' +
-          '<input id="f-stake" type="text" inputmode="numeric" placeholder="Например: 250" value="' + (d.stake || "") + '" oninput="onStakeInput(this.value)">' +
-          '<div id="stake-note" class="muted" style="margin-top:8px">' + (d.stake ? d.stake + " ⭐ будет списано при подтверждении." : "Пока без ставки — только слово.") + "</div>" +
-          '<div class="info-box" style="margin-top:14px"><b style="display:block;margin-bottom:4px">Нет звёзд, а платёж из России?</b>' +
-          '<div class="muted" style="font-size:13px;margin-bottom:8px">Купить Stars можно через Telegram-бота @vseznayka_stars_bot — самый простой вариант, прямо в чате, либо переключись на «Карта, ₽» выше.</div>' +
-          '<a href="https://t.me/vseznayka_stars_bot" target="_blank" style="display:block;text-align:center;padding:10px;border-radius:10px;border:1px solid var(--border);color:var(--gold2);text-decoration:none;font-size:14px">Открыть @vseznayka_stars_bot</a>' +
-          '<div class="muted" style="font-size:11.5px;margin-top:8px">Это сторонний сервис, не связанный с Сила Слова. Мы не можем гарантировать его работу — прежде чем платить, проверь отзывы сам.</div></div>';
-      }
+      // Оплата картой МИР — карта пока на подтверждении у платёжной системы, Stars отключены
+      // полностью. Ставку по-прежнему можно назначить — просто оплата подключится позже.
+      body = "<h2>Обещание</h2>" +
+        '<div class="muted" style="margin-bottom:10px">Сумма в рублях, от 1 000 до 20 000 ₽ — при выполнении вернём 90% на карту (10% — разовая стоимость активации).' +
+        (d.kind === "challenge" ? " В Вызове сумма одинаковая для обеих сторон." : "") + "</div>" +
+        '<div class="chips">' +
+        '<div class="chip" onclick="pickStake(0)">Без ставки</div>' +
+        '<div class="chip" onclick="pickStake(1000)">1 000 ₽</div>' +
+        '<div class="chip" onclick="pickStake(5000)">5 000 ₽</div>' +
+        '<div class="chip" onclick="pickStake(20000)">20 000 ₽</div></div>' +
+        '<div class="muted" style="margin:12px 0 6px">Или своя сумма (1 000–20 000 ₽):</div>' +
+        '<input id="f-stake" type="text" inputmode="numeric" placeholder="Например: 3000" value="' + (d.stake || "") + '" oninput="onStakeInput(this.value)">' +
+        '<div id="stake-note" class="muted" style="margin-top:8px">' + (d.stake ? d.stake + " ₽ — оплата картой МИР сейчас на подтверждении у платёжной системы, спишется, как только подключение будет готово." : "Пока без ставки — только слово.") + "</div>" +
+        '<div class="info-box" style="margin-top:14px"><b style="display:block;margin-bottom:4px">Оплата картой МИР — на подтверждении</b>' +
+        '<div class="muted" style="font-size:13px">Ставку можно назначить сейчас, карточка встанет в очередь на оплату. Спишем и подтвердим, как только подключение платёжной системы будет готово — уведомим отдельно.</div></div>';
     } else if (name === "review") {
       const isChallenge = d.kind === "challenge";
       const rows = [];
@@ -1357,18 +1305,15 @@
       } else if (d.type !== "result") {
         rows.push('<div class="row"><span>Срок</span><span>' + formatRuDate(d._date) + " · " + d.days + " дн.</span></div>");
       }
-      const curUnit = d.currency === "RUB" ? " ₽" : " ⭐";
       rows.push('<div class="row"><span>Видео</span><span>' + (d.videoFile ? "прикреплено ✓" : "нет") + "</span></div>");
-      rows.push('<div class="row"><span>Ставка</span><span>' + (d.stake ? d.stake + curUnit : "без ставки") + "</span></div>");
+      rows.push('<div class="row"><span>Ставка</span><span>' + (d.stake ? d.stake + " ₽" : "без ставки") + "</span></div>");
       body = "<h2>Проверь и вперёд</h2>" +
         '<div class="card">' + rows.join("") + "</div>" +
         '<div class="muted" style="text-align:center;margin-bottom:16px">' +
         (isChallenge
-          ? "Отправляем вызов сопернику" + (d.stake ? " и откроется оплата твоей ставки " + d.stake + curUnit : "") + ". Оба стартуете вместе, как только он примет" + (d.stake ? " и тоже оплатит" : "") + "."
+          ? "Отправляем вызов сопернику" + (d.stake ? " — ставка " + d.stake + " ₽ встанет в очередь на оплату картой МИР (сейчас на подтверждении)" : "") + ". Оба стартуете вместе, как только он примет" + (d.stake ? " и оплата подтвердится" : "") + "."
           : (d.stake
-              ? (d.currency === "RUB"
-                  ? "Подтверждаешь — откроется страница оплаты картой на " + d.stake + " ₽. Карточка публикуется сразу после оплаты."
-                  : "Подтверждаешь — сразу откроется оплата " + d.stake + " ⭐. Карточка публикуется сразу после оплаты, не выходя из приложения.")
+              ? "Подтверждаешь — ставка " + d.stake + " ₽ встанет в очередь на оплату картой МИР (сейчас на подтверждении у платёжной системы). Карточка публикуется сразу после подтверждения оплаты."
               : "Подтверждаешь — публикуем сразу, не выходя из приложения.")) +
         "</div>";
     }
@@ -1589,18 +1534,10 @@
   };
 
   function stakeNoteText(n) {
-    if (ctx.draft.currency === "RUB") {
-      if (!n) return "Минимум 1 000 ₽ — без ставки только по Stars.";
-      if (n < 1000) return "Минимум 1 000 ₽.";
-      return n + " ₽ спишется картой при подтверждении, 90% вернётся при выполнении.";
-    }
-    return n ? n + " ⭐ будет списано при подтверждении." : "Пока без ставки — только слово.";
+    if (!n) return "Пока без ставки — только слово.";
+    if (n < 1000) return "Минимум 1 000 ₽.";
+    return n + " ₽ — оплата картой МИР сейчас на подтверждении у платёжной системы, спишется, как только подключение будет готово.";
   }
-  window.pickCurrency = function (cur) {
-    ctx.draft.currency = cur;
-    ctx.draft.stake = 0; // сумма Stars и рублей не взаимозаменяема — сбрасываем при переключении метода
-    window.renderWizard();
-  };
   window.pickStake = function (n) {
     ctx.draft.stake = n;
     const input = document.getElementById("f-stake");
@@ -1610,8 +1547,7 @@
   };
   window.onStakeInput = function (v) {
     const n = parseInt(v, 10);
-    const max = ctx.draft.currency === "RUB" ? 20000 : 10000;
-    ctx.draft.stake = Number.isFinite(n) && n > 0 ? Math.min(n, max) : 0;
+    ctx.draft.stake = Number.isFinite(n) && n > 0 ? Math.min(n, 20000) : 0;
     const note = document.getElementById("stake-note");
     if (note) note.textContent = stakeNoteText(ctx.draft.stake);
   };
@@ -1658,7 +1594,7 @@
     if (name === "skipDays") {
       if (!d.allowed_skip_weekdays || !d.allowed_skip_weekdays.length) return err("Выбери хотя бы один день.");
     }
-    if (name === "stake" && d.currency === "RUB" && d.stake > 0 && d.stake < 1000) return err("Минимум 1 000 ₽ — увеличь сумму или выбери Stars.");
+    if (name === "stake" && d.stake > 0 && d.stake < 1000) return err("Минимум 1 000 ₽.");
     if (name === "witness") {
       const phone = document.getElementById("f-wphone").value.trim();
       const wtg = document.getElementById("f-wtg").value.trim();
@@ -1695,14 +1631,13 @@
         return;
       }
       ctx.lastChallengeInvite = data.invite || null;
-      if (data.pending) { openStakeInvoice(data.invoice_link, data.bet_id, "challenge"); }
-      else { finishChallengeCreate(false); }
+      finishChallengeCreate(!!data.pending);
     } catch (e) {
       app.innerHTML = emptyMsg("Ошибка соединения. Попробуй ещё раз.") + '<button onclick="renderWizard()">Назад к форме</button>';
     }
   }
 
-  function finishChallengeCreate(paid) {
+  function finishChallengeCreate(stakePending) {
     const app = document.getElementById("app");
     const inv = ctx.lastChallengeInvite;
     const inviteBlock = inv
@@ -1712,8 +1647,8 @@
         '<div style="display:flex;gap:8px"><button class="btn-secondary" style="flex:1;margin:0" onclick="shareChallengeInvite()">Поделиться</button>' +
         '<button class="btn-secondary" style="flex:1;margin:0" onclick="copyChallengeInvite(this)">Скопировать</button></div></div>'
       : "";
-    const note = paid
-      ? '<div class="muted" style="text-align:center;margin-bottom:12px">⭐ Твоя ставка оплачена. Ждём, пока соперник примет и тоже поставит на кон.</div>'
+    const note = stakePending
+      ? '<div class="muted" style="text-align:center;margin-bottom:12px">Твоя ставка встала в очередь на оплату картой МИР (сейчас на подтверждении). Ждём, пока соперник примет и тоже поставит на кон.</div>'
       : '<div class="muted" style="text-align:center;margin-bottom:12px">Ждём, пока соперник примет вызов.</div>';
     app.innerHTML =
       '<div class="card" style="text-align:center"><div style="font-size:40px;margin-bottom:8px">⚔️</div>' +
@@ -1750,7 +1685,7 @@
     try {
       const d = ctx.draft;
       const fd = new FormData();
-      const draftPayload = { mode: d.mode, type: d.type, goal: d.goal, days: d.days, stake: d.stake || 0, currency: d.currency === "RUB" ? "RUB" : "XTR" };
+      const draftPayload = { mode: d.mode, type: d.type, goal: d.goal, days: d.days, stake: d.stake || 0, currency: "RUB" };
       if (d.type === "result") {
         draftPayload.point_a = d.point_a;
         draftPayload.motivation = d.motivation;
@@ -1775,17 +1710,7 @@
         return;
       }
       ctx.lastWitnessInvite = data.witness_invite || null;
-      if (data.pending && data.currency === "RUB") {
-        if (!data.confirmation_url) {
-          app.innerHTML = emptyMsg("Оплата картой пока недоступна. Ставка сохранена как «ждёт оплаты» — попробуй ещё раз из списка ставок.") +
-            '<button class="btn-secondary" onclick="reloadAndHome()">К списку ставок</button>';
-          return;
-        }
-        app.innerHTML = emptyMsg("Открываю оплату картой…");
-        const ok = await openCardPaymentDuringCreate(data.confirmation_url, data.bet_id);
-        finishWizard(data.bet_id, true, ok ? "active" : "processing");
-      }
-      else if (data.pending) { openStakeInvoice(data.invoice_link, data.bet_id); }
+      if (data.pending) { finishWizard(data.bet_id, false, "pending_approval"); }
       else { await refreshStatus(); finishWizard(data.bet_id, true, null); }
     } catch (e) {
       app.innerHTML = emptyMsg("Ошибка соединения. Попробуй ещё раз.") + '<button onclick="renderWizard()">Назад к форме</button>';
@@ -1807,55 +1732,22 @@
     return await pollUntilActive(betId, 15, 2000);
   }
 
-  // ставка > 0: карточка ЕЩЁ НЕ существует для остальных — она публикуется только после
-  // того, как звёзды реально списаны (подтверждение приходит на вебхук бота отдельным
-  // апдейтом, поэтому после tg.openInvoice() дожидаемся, пока ставка станет active).
-  window.openStakeInvoice = function (link, betId, kind) {
-    kind = kind || "solo"; // 'solo' | 'challenge' (создатель) | 'challengeAccept' (приглашённый)
-    const app = document.getElementById("app");
-    if (!link) {
-      app.innerHTML = emptyMsg("Не удалось создать оплату. Ставка сохранена как «ждёт оплаты» — попробуй ещё раз из списка ставок.") +
-        '<button class="btn-secondary" onclick="reloadAndHome()">К списку ставок</button>';
-      return;
-    }
-    app.innerHTML = emptyMsg("Открываю оплату…");
-    if (!tg || typeof tg.openInvoice !== "function") {
-      app.innerHTML = emptyMsg("Оплата недоступна в этой версии Telegram. Ставка сохранена как «ждёт оплаты».") +
-        '<button class="btn-secondary" onclick="reloadAndHome()">К списку ставок</button>';
-      return;
-    }
-    tg.openInvoice(link, async function (status) {
-      if (status === "paid") {
-        if (kind === "solo") {
-          app.innerHTML = emptyMsg("Оплата прошла — публикую карточку…");
-          const ok = await pollUntilActive(betId, 8, 1200);
-          finishWizard(betId, true, ok ? "active" : "processing");
-        } else if (kind === "challenge") {
-          finishChallengeCreate(true);
-        } else if (kind === "challengeAccept") {
-          finishChallengeAccept(true);
-        }
-      } else {
-        if (kind === "solo") finishWizard(betId, false, status);
-        else if (kind === "challenge") finishChallengeCreate(false);
-        else if (kind === "challengeAccept") finishChallengeAccept(false);
-      }
-    });
-  };
-
   function finishWizard(betId, paid, status) {
     const app = document.getElementById("app");
     if (!paid) {
+      const pendingApproval = status === "pending_approval";
       app.innerHTML =
         '<div class="card" style="text-align:center"><div style="font-size:40px;margin-bottom:8px">⏳</div>' +
         '<div style="font-size:17px;margin-bottom:6px">Видео записано, но не опубликовано</div>' +
-        '<div class="muted">Оплата не завершена — карточка #' + betId + " появится, как только оплатишь ставку. Она ждёт тебя в списке ставок." + "</div></div>" +
+        '<div class="muted">' + (pendingApproval
+          ? "Оплата картой МИР сейчас на подтверждении у платёжной системы — карточка #" + betId + " появится, как только оплата подтвердится. Она ждёт тебя в списке ставок."
+          : "Оплата не завершена — карточка #" + betId + " появится, как только оплатишь ставку. Она ждёт тебя в списке ставок.") + "</div></div>" +
         '<button class="btn-secondary" onclick="reloadAndHome()">К списку ставок</button>';
       return;
     }
     const note = status === "processing"
-      ? '<div class="muted" style="text-align:center;margin-bottom:12px">⭐ Оплата подтверждается — карточка появится в группе в течение минуты.</div>'
-      : '<div class="muted" style="text-align:center;margin-bottom:12px">⭐ Ставка оплачена.</div>';
+      ? '<div class="muted" style="text-align:center;margin-bottom:12px">Оплата подтверждается — карточка появится в группе в течение минуты.</div>'
+      : '<div class="muted" style="text-align:center;margin-bottom:12px">Ставка оплачена.</div>';
     const wi = ctx.lastWitnessInvite;
     const witnessBlock = wi
       ? '<div class="card" style="text-align:center"><div class="muted" style="margin-bottom:8px">Нажми «Поделиться» и выбери свидетеля прямо из своих контактов в Telegram — или перешли ссылку/QR вручную:</div>' +
@@ -2005,7 +1897,7 @@
       ? '<div class="card hardest-card"><div class="hicon">🏔️</div><div>' +
         '<div class="muted" style="font-size:12px">Самая сложная сдержанная ставка</div>' +
         '<div style="font-weight:600">' + esc(p.hardest_bet.goal) + "</div>" +
-        '<div class="muted" style="font-size:12px">' + (p.hardest_bet.stake ? p.hardest_bet.stake + " ⭐ · " : "") + p.hardest_bet.duration_days + " дн.</div>" +
+        '<div class="muted" style="font-size:12px">' + (p.hardest_bet.stake ? p.hardest_bet.stake + " ₽ · " : "") + p.hardest_bet.duration_days + " дн.</div>" +
         "</div></div>"
       : "";
 
