@@ -106,7 +106,7 @@
   .hardest-card { display: flex; align-items: center; gap: 10px; }
   .hardest-card .hicon { font-size: 26px; }
 
-  /* ---------- мастер ставки v2 ---------- */
+  /* ---------- мастер обязательства v2 ---------- */
   .info-box { border: 1px solid var(--border); background: var(--panel); border-radius: 12px; padding: 12px 14px; }
   .chips-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
   .chips-wrap .chip { flex: 0 0 auto; min-width: 46px; }
@@ -137,11 +137,11 @@
   const PERSONA_IMG = { confucius: "../confucius.jpg", arnold: "../coach.jpg", zina: "../baba_zina.jpg", angela: "../angela_fox.jpg", goblin: "../goblin.jpg" };
   const PERSONA_FONT = { confucius: "name-confucius", arnold: "name-arnold", zina: "name-zina", angela: "name-angela", goblin: "name-goblin" };
 
-  // ---------- Мастер ставки v2 (см. Мастер_ставки_v2_PRD.md) ----------
+  // ---------- Мастер обязательства v2 (см. Мастер_обязательства_v2_PRD.md) ----------
   const EXAMPLES = {
     result: ["Похудеть на 8 кг", "Накопить 300 000 ₽", "Закрыть кредит", "Пробежать 10 км", "Выучить английский до B1", "Прочитать 12 книг", "Завершить обучение", "Запустить свой проект", "Получить водительские права", "Сделать ремонт", "Найти новую работу", "Набрать 5 кг"],
     habit: ["100 отжиманий в день", "Тренироваться 3 раза в неделю", "Проходить 10 000 шагов", "Читать 20 минут в день", "Учить английский 30 минут", "Медитировать каждое утро", "Ложиться до 23:00", "Выпивать 2 литра воды", "Делать 10 звонков клиентам", "Вести учёт расходов", "Писать по одной странице", "Делать зарядку по утрам"],
-    quit: ["Без алкоголя", "Без сигарет", "Без сладкого", "Без фастфуда", "Без энергетиков", "Без ставок и казино", "Без импульсивных покупок", "Без соцсетей после 22:00", "Без телефона первый час после пробуждения", "Без компьютерных игр по будням", "Без еды после 20:00", "Без нецензурной речи"],
+    quit: ["Без алкоголя", "Без сигарет", "Без сладкого", "Без фастфуда", "Без энергетиков", "Без обязательств и казино", "Без импульсивных покупок", "Без соцсетей после 22:00", "Без телефона первый час после пробуждения", "Без компьютерных игр по будням", "Без еды после 20:00", "Без нецензурной речи"],
   };
   const HABIT_TIER_LABELS = { light: "Лайт", normie: "Норм", best_self: "Лучшая Версия Себя" };
   const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]; // индекс совпадает с WEEKDAYS_RU в бот/index.ts
@@ -175,6 +175,7 @@
     { title: "Политика конфиденциальности", url: LEGAL_BASE + "/privacy.html" },
     { title: "Согласие на обработку данных", url: LEGAL_BASE + "/soglasie-pd.html" },
     { title: "Согласие на публичность", url: LEGAL_BASE + "/soglasie-public.html" },
+    { title: "💸 Как работают обещания", url: LEGAL_BASE + "/promise-model.html" },
   ];
   function openLegalDoc(url) {
     if (tg && typeof tg.openLink === "function") tg.openLink(url);
@@ -299,7 +300,7 @@
     document.getElementById("app").innerHTML =
       '<div class="card">' +
       "<p>Люди не достигают целей не потому, что не знают как. А потому, что за слив ничего не будет. Пообещал — забыл — никто не заметил.</p>" +
-      "<p>1. Записываешь видео: «Даю слово, что…»<br>2. Ставишь на кон своё слово<br>3. Отчитываешься каждый день<br>4. Дошёл — герой. Слился — все узнают, чего стоит твоё слово.</p>" +
+      "<p>1. Записываешь видео: «Даю слово, что…»<br>2. Подтверждаешь своё слово рублём<br>3. Отчитываешься каждый день<br>4. Дошёл — герой. Слился — все узнают, чего стоит твоё слово.</p>" +
       "<p>Пропустил отчёт — слово не сдержано. Без запасных дней. Поэтому и работает.</p>" +
       "</div><button onclick=\"renderHome()\">Назад</button>";
   };
@@ -310,9 +311,9 @@
       app.innerHTML = emptyMsg("Сначала пройди быстрый старт в чате бота — напиши боту /start.") + footerNav();
       return;
     }
-    // ставки внутри Вызова — уже своя строка в bets (нужно для отчётов/персонажа/ставки),
+    // обязательства внутри Вызова — уже своя строка в bets (нужно для отчётов/персонажа/обязательства),
     // но на глазах у пользователя не должны дублироваться с виджетом "Мои вызовы" ниже —
-    // показываем их только там, а не вперемешку с обычными личными/публичными ставками.
+    // показываем их только там, а не вперемешку с обычными личными/публичными обязательствами.
     const bets = (ctx.bets || []).filter(function (b) { return !b.challenge_id; });
     const pending = (ctx.pending || []).filter(function (p) { return !p.challenge_id; });
     const reviewing = (ctx.reviewing || []).filter(function (r) { return !r.challenge_id; });
@@ -324,14 +325,14 @@
           '<div class="top"><div class="goal">' + esc(p.goal) + '</div>' +
           '<div class="badge">⏳ #' + p.id + "</div></div>" +
           '<div class="meta">' + TYPES[p.type] + " · " + (p.mode === "public" ? "Публично" : "Лично") + "</div>" +
-          '<div class="meta">Видео записано. Ставка ' + p.stake + ' ₽ — оплата картой МИР на подтверждении, карточка опубликуется после подтверждения.</div>' +
+          '<div class="meta">Видео записано. Обязательство ' + p.stake + ' ₽ — оплата картой МИР на подтверждении, карточка опубликуется после подтверждения.</div>' +
           '<button onclick="payPendingStake(' + p.id + "," + p.stake + ')">Проверить статус оплаты</button>' +
           "</div>";
       }).join("");
     }
     if (bets.length) {
       html += '<div class="muted" style="margin-bottom:10px">' +
-        (bets.length === 1 ? "Твоя активная ставка:" : "Твои активные ставки (" + bets.length + "):") + "</div>";
+        (bets.length === 1 ? "Твоё активное обязательство:" : "Твои активные обязательства (" + bets.length + "):") + "</div>";
       html += bets.map(function (b) {
         const left = Math.max(0, b.duration_days - b.day_n);
         const pct = Math.max(2, Math.min(100, Math.round((b.day_n / b.duration_days) * 100)));
@@ -351,7 +352,7 @@
           '<div class="bar"><i style="width:' + pct + '%"></i></div></div>';
       }).join("");
     } else if (!pending.length) {
-      html += '<div class="empty"><div style="font-size:17px;margin-bottom:4px">Активных ставок нет.</div>' +
+      html += '<div class="empty"><div style="font-size:17px;margin-bottom:4px">Активных обязательств нет.</div>' +
         '<div class="muted">Готов проверить себя?</div></div>';
     }
     if (reviewing.length) {
@@ -390,7 +391,7 @@
     return c.status;
   }
 
-  // ---------- карточка ставки: детали, отчёт, персонаж ----------
+  // ---------- карточка обязательства: детали, отчёт, персонаж ----------
   window.openBet = function (id) {
     ctx.selectedBetId = id;
     renderBetDetail();
@@ -425,7 +426,7 @@
           '<video src="' + escAttr(b.video_url) + '" controls playsinline webkit-playsinline="true" preload="metadata" style="width:100%;height:auto;max-height:70vh;background:#000;border-radius:12px;display:block;margin-bottom:12px"></video>' +
           commentsToggleHtml(b.id, 0, "bet-video-cmt")
         : "") +
-      (b.stake > 0 && !b.stake_paid ? '<button class="btn-secondary" onclick="payStake(' + b.id + "," + b.stake + ')">Ставка ' + b.stake + " ₽ — на подтверждении</button>" : "") +
+      (b.stake > 0 && !b.stake_paid ? '<button class="btn-secondary" onclick="payStake(' + b.id + "," + b.stake + ')">Обязательство ' + b.stake + " ₽ — на подтверждении</button>" : "") +
       (b.reported_today
         ? '<button class="btn-secondary" disabled style="opacity:.6">Отчёт за сегодня уже отправлен</button>'
         : '<button onclick="sendReport(' + b.id + ')">Отправить отчёт</button>') +
@@ -434,12 +435,12 @@
       '<div id="bet-msg" class="muted" style="text-align:center;margin-top:10px"></div>' +
       '<div class="section-title">История отчётов</div>' +
       '<div id="bet-history" class="muted">Загрузка…</div>' +
-      '<button class="btn-secondary" onclick="renderHome()">К списку ставок</button>' +
-      '<div style="text-align:center;margin-top:22px"><span onclick="openGiveUp(' + b.id + ')" class="muted" style="font-size:11px;text-decoration:underline;cursor:pointer;opacity:.55">сдать ставку</span></div>';
+      '<button class="btn-secondary" onclick="renderHome()">К списку обязательств</button>' +
+      '<div style="text-align:center;margin-top:22px"><span onclick="openGiveUp(' + b.id + ')" class="muted" style="font-size:11px;text-decoration:underline;cursor:pointer;opacity:.55">сдать обязательство</span></div>';
     loadBetHistory(b.id);
   };
 
-  // ---------- сдача ставки — намеренно спрятанная и многошаговая (не кнопка, а мелкая ссылка
+  // ---------- сдача обязательства — намеренно спрятанная и многошаговая (не кнопка, а мелкая ссылка
   // внизу карточки; см. бот/index.ts — тот же протокол: запрос → печатное подтверждение фразой
   // в 10-минутном окне → отменяемый суточный кулдаун → финализация только кроном бота) ----------
   const GIVEUP_PHRASE = "ПОДТВЕРЖДАЮ";
@@ -464,10 +465,10 @@
     const app = document.getElementById("app");
     const b = (ctx.bets || []).find(function (x) { return x.id === betId; });
     const isDuel = !!(b && b.challenge_id);
-    const stakeNote = b && b.stake > 0 ? "Ставка (" + b.stake + " ₽) сгорает полностью — как при провале по сроку, без возврата." : "";
+    const stakeNote = b && b.stake > 0 ? "Обязательство (" + b.stake + " ₽) сгорает полностью — как при провале по сроку, без возврата." : "";
     const duelNote = isDuel ? "Это Вызов: если сдашься, соперник продолжает один — ваша связка разрывается." : "";
     app.innerHTML =
-      '<div class="card"><div class="big">Сдать ставку?</div>' +
+      '<div class="card"><div class="big">Сдать обязательство?</div>' +
       '<div class="muted" style="margin-top:8px">' + esc((b && b.goal) || "") + '</div></div>' +
       '<div class="muted" style="margin-top:14px;line-height:1.5">' +
       'Это не отменяется по щелчку — решение весит столько же, сколько само слово, которое ты давал(а).' +
@@ -537,9 +538,9 @@
     const app = document.getElementById("app");
     app.innerHTML =
       '<div class="card"><div class="big">Принято</div>' +
-      '<div class="muted" style="margin-top:8px">Сутки на передумать. Если не отменишь, ставка закроется автоматически ' + fmtMskDateTime(finalizeAtIso) + '. Ставка всё это время работает как обычно — можно отчитываться.</div></div>' +
+      '<div class="muted" style="margin-top:8px">Сутки на передумать. Если не отменишь, обязательство закроется автоматически ' + fmtMskDateTime(finalizeAtIso) + '. Обязательство всё это время работает как обычно — можно отчитываться.</div></div>' +
       '<button class="btn-secondary" onclick="cancelGiveUpDraft(' + betId + ')">Передумал(а) — отменить сдачу</button>' +
-      '<button class="btn-secondary" onclick="renderBetDetail()">Назад к ставке</button>';
+      '<button class="btn-secondary" onclick="renderBetDetail()">Назад к обязательству</button>';
   }
 
   // ---------- личный кошелёк — пока чистая инфраструктура (баланс + лента операций), логика
@@ -555,13 +556,12 @@
       const historyHtml = txns.length
         ? txns.map(function (t) {
             const sign = t.type === "credit" ? "+" : "−";
-            const cur = t.currency === "RUB" ? "₽" : "⭐";
-            return '<div class="row"><span>' + esc(t.reason) + '</span><span>' + sign + t.amount + " " + cur + "</span></div>";
+            return '<div class="row"><span>' + esc(t.reason) + '</span><span>' + sign + t.amount + " ₽</span></div>";
           }).join("")
         : '<div class="muted">Пока пусто.</div>';
       app.innerHTML =
         '<div class="section-title">💰 Кошелёк</div>' +
-        '<div class="card"><div class="big">' + data.balance_rub + " ₽ · " + data.balance_stars + " ⭐</div></div>" +
+        '<div class="card"><div class="big">' + data.balance_rub + " ₽</div></div>" +
         '<div class="section-title">История</div>' + historyHtml +
         '<button class="btn-secondary" onclick="renderHome()">На главный экран</button>';
     } catch (e) {
@@ -569,8 +569,8 @@
     }
   };
 
-  // ---------- история отчётов по конкретной ставке — используется и обычной карточкой, и Вызовом,
-  // чтобы клик по ставке в любом из виджетов профиля показывал не только статус, но и что реально
+  // ---------- история отчётов по конкретной обязательству — используется и обычной карточкой, и Вызовом,
+  // чтобы клик по обязательству в любом из виджетов профиля показывал не только статус, но и что реально
   // отправлялось по дням ----------
   // отчёт с медиа — судья (соперник в Вызове, или ты сам) должен уметь открыть КАЖДЫЙ день
   // по отдельности и пересчитать по видео, а не просто увидеть значок "есть фото"; поэтому
@@ -619,7 +619,7 @@
   window.loadBetHistory = loadBetHistory;
 
   // ---------- комментарии — первый шаг к соц-механике: каждое видео-обещание (day=0) и каждый
-  // отчёт конкретного дня можно комментировать. Доступ открыт любому, кто открыл ставку в
+  // отчёт конкретного дня можно комментировать. Доступ открыт любому, кто открыл обязательство в
   // приложении (не только участникам Вызова) — свёрнуто по умолчанию, чтобы не захламлять экран.
   function commentsToggleHtml(betId, day, uid) {
     return '<div style="margin:2px 0 14px">' +
@@ -684,7 +684,7 @@
   };
 
   // Оплата картой МИР сейчас на подтверждении у платёжной системы — реального инвойса не
-  // создаётся, ставка просто фиксируется как «ждёт оплаты».
+  // создаётся, обязательство просто фиксируется как «ждёт оплаты».
   window.payStake = async function (betId, stake) {
     const msgEl = document.getElementById("bet-msg");
     if (msgEl) msgEl.textContent = "Секунду…";
@@ -694,7 +694,7 @@
     if (msgEl) msgEl.textContent = "Оплата картой МИР сейчас на подтверждении у платёжной системы. Как только подключение будет готово — спишем и уведомим.";
   };
 
-  // ждём, пока вебхук бота обработает successful_payment и переведёт ставку в active —
+  // ждём, пока вебхук бота обработает successful_payment и переведёт обязательство в active —
   // это отдельный апдейт от Telegram, приходит почти сразу, но не мгновенно
   async function pollUntilActive(betId, tries, delayMs) {
     for (let i = 0; i < tries; i++) {
@@ -713,12 +713,12 @@
       await api("/invoice", { method: "POST", body: JSON.stringify({ bet_id: betId, stake: stake }) });
     } catch (e) { /* молча — сообщение ниже одно и то же в любом случае */ }
     await refreshStatus();
-    app.innerHTML = emptyMsg("Оплата картой МИР сейчас на подтверждении у платёжной системы. Ставка сохранена — спишем и опубликуем, как только подключение будет готово.") +
+    app.innerHTML = emptyMsg("Оплата картой МИР сейчас на подтверждении у платёжной системы. Обязательство сохранена — спишем и опубликуем, как только подключение будет готово.") +
       '<button class="btn-secondary" onclick="renderHome()">На главный экран</button>';
   };
 
-  // ОТКЛЮЧЕНО (август 2026): карта МИР пока на подтверждении, YuKassa/Stars убраны из
-  // платёжных путей (см. submitCreate/payStake/payPendingStake). Функция не вызывается нигде —
+  // ОТКЛЮЧЕНО (август 2026): карта МИР пока на подтверждении, старые платёжные пути убраны
+  // (см. submitCreate/payStake/payPendingStake). Функция не вызывается нигде —
   // оставлена дормантной как готовый redirect+poll-паттерн для будущего подключения.
   window.openCardPayment = async function (confirmationUrl, betId) {
     const app = document.getElementById("app");
@@ -824,7 +824,7 @@
       '<div class="row"><span>Старт</span><span>' + formatRuDate(c.start_date) + '</span></div>' +
       '<div class="row"><span>Срок</span><span>' + c.duration_days + ' дн.</span></div>' +
       '<div class="row"><span>Пруф</span><span>' + esc(c.proof_format || "") + '</span></div>' +
-      '<div class="row"><span>Ставка</span><span>' + (c.stake ? c.stake + ' ₽' : 'без ставки') + '</span></div>' +
+      '<div class="row"><span>Обязательство</span><span>' + (c.stake ? c.stake + ' ₽' : 'без обязательства') + '</span></div>' +
       '</div>' +
       '<div class="card">' + playersBlock + '</div>' +
       buildChallengeVideos(c) +
@@ -918,7 +918,7 @@
       '<div class="row"><span>Старт</span><span>' + formatRuDate(ch.start_date) + '</span></div>' +
       '<div class="row"><span>Срок</span><span>' + ch.duration_days + ' дн.</span></div>' +
       '<div class="row"><span>Пруф</span><span>' + esc(ch.proof_format) + '</span></div>' +
-      '<div class="row"><span>Ставка</span><span>' + (ch.stake ? ch.stake + ' ₽ с каждой стороны' : 'без ставки') + '</span></div></div>' +
+      '<div class="row"><span>Обязательство</span><span>' + (ch.stake ? ch.stake + ' ₽ с каждой стороны' : 'без обязательства') + '</span></div></div>' +
       videoBlock +
       '<div class="muted" style="text-align:center;margin-bottom:16px">Условия менять нельзя на этом шаге — предложить правки можно будет после того, как оба согласятся.</div>' +
       '<button onclick="startChallengeAcceptVideo()">Принять вызов</button>' +
@@ -1048,11 +1048,11 @@
     app.innerHTML =
       '<div class="card" style="text-align:center"><div style="font-size:40px;margin-bottom:8px">⚔️</div>' +
       '<div style="font-size:17px;margin-bottom:6px">Вызов принят</div>' +
-      '<div class="muted">' + (stakePending ? "Ставка встала в очередь на оплату картой МИР (сейчас на подтверждении). " : "") + 'Как только настанет дата старта — начнёте оба одновременно.</div></div>' +
+      '<div class="muted">' + (stakePending ? "Обязательство встала в очередь на оплату картой МИР (сейчас на подтверждении). " : "") + 'Как только настанет дата старта — начнёте оба одновременно.</div></div>' +
       '<button class="btn-secondary" onclick="reloadAndHome()">На главный экран</button>';
   }
 
-  // ---------- мастер ставки ----------
+  // ---------- мастер обязательства ----------
   const MAX_VIDEO_BYTES = 20 * 1024 * 1024;
   window.startWizard = function () {
     ctx.draft = {
@@ -1174,10 +1174,10 @@
       let chips = "";
       if (d.type === "habit") {
         chips = '<div class="chips"><div class="chip" onclick="pickDays(21)">21 день</div><div class="chip" onclick="pickDays(40)">40 дней</div></div>' +
-          '<div class="chips" style="margin-top:8px"><div class="chip" onclick="pickDays(100)">100 дней</div><div class="chip" onclick="pickDays(365)">365 дней</div></div>';
+          '<div class="chips" style="margin-top:8px"><div class="chip" onclick="pickDays(100)">100 дней</div><div class="chip" onclick="pickDays(330)">330 дней</div></div>';
       } else if (d.type === "quit") {
         chips = '<div class="chips"><div class="chip" onclick="pickDays(30)">30 дней</div><div class="chip" onclick="pickDays(90)">90 дней</div></div>' +
-          '<div class="chips" style="margin-top:8px"><div class="chip" onclick="pickDays(180)">180 дней</div><div class="chip" onclick="pickDays(365)">Год</div></div>';
+          '<div class="chips" style="margin-top:8px"><div class="chip" onclick="pickDays(180)">180 дней</div><div class="chip" onclick="pickDays(330)">330 дней</div></div>';
       } else {
         chips = '<div class="chips"><div class="chip" onclick="pickDays(7)">Неделя</div><div class="chip" onclick="pickDays(14)">2 недели</div><div class="chip" onclick="pickDays(30)">Месяц</div></div>';
       }
@@ -1266,21 +1266,21 @@
           '<div id="f-err" class="err"></div>';
       }
     } else if (name === "stake") {
-      // Оплата картой МИР — карта пока на подтверждении у платёжной системы, Stars отключены
-      // полностью. Ставку по-прежнему можно назначить — просто оплата подключится позже.
+      // Оплата картой МИР — карта пока на подтверждении у платёжной системы
+      // полностью. Обязательство по-прежнему можно назначить — просто оплата подключится позже.
       body = "<h2>Обещание</h2>" +
-        '<div class="muted" style="margin-bottom:10px">Сумма в рублях, от 1 000 до 20 000 ₽ — при выполнении вернём 90% на карту (10% — разовая стоимость активации).' +
+        '<div class="muted" style="margin-bottom:10px">Сумма в рублях, от 1 000 до 20 000 ₽ — при выполнении вернём 100% на карту. Передумаешь раньше срыва — вернём 90% (10% — разовая стоимость активации).' +
         (d.kind === "challenge" ? " В Вызове сумма одинаковая для обеих сторон." : "") + "</div>" +
         '<div class="chips">' +
-        '<div class="chip" onclick="pickStake(0)">Без ставки</div>' +
+        '<div class="chip" onclick="pickStake(0)">Без обязательства</div>' +
         '<div class="chip" onclick="pickStake(1000)">1 000 ₽</div>' +
         '<div class="chip" onclick="pickStake(5000)">5 000 ₽</div>' +
         '<div class="chip" onclick="pickStake(20000)">20 000 ₽</div></div>' +
         '<div class="muted" style="margin:12px 0 6px">Или своя сумма (1 000–20 000 ₽):</div>' +
         '<input id="f-stake" type="text" inputmode="numeric" placeholder="Например: 3000" value="' + (d.stake || "") + '" oninput="onStakeInput(this.value)">' +
-        '<div id="stake-note" class="muted" style="margin-top:8px">' + (d.stake ? d.stake + " ₽ — оплата картой МИР сейчас на подтверждении у платёжной системы, спишется, как только подключение будет готово." : "Пока без ставки — только слово.") + "</div>" +
+        '<div id="stake-note" class="muted" style="margin-top:8px">' + (d.stake ? d.stake + " ₽ — оплата картой МИР сейчас на подтверждении у платёжной системы, спишется, как только подключение будет готово." : "Пока без обязательства — только слово.") + "</div>" +
         '<div class="info-box" style="margin-top:14px"><b style="display:block;margin-bottom:4px">Оплата картой МИР — на подтверждении</b>' +
-        '<div class="muted" style="font-size:13px">Ставку можно назначить сейчас, карточка встанет в очередь на оплату. Спишем и подтвердим, как только подключение платёжной системы будет готово — уведомим отдельно.</div></div>';
+        '<div class="muted" style="font-size:13px">Обязательство можно назначить сейчас, карточка встанет в очередь на оплату. Спишем и подтвердим, как только подключение платёжной системы будет готово — уведомим отдельно.</div></div>';
     } else if (name === "review") {
       const isChallenge = d.kind === "challenge";
       const rows = [];
@@ -1306,14 +1306,14 @@
         rows.push('<div class="row"><span>Срок</span><span>' + formatRuDate(d._date) + " · " + d.days + " дн.</span></div>");
       }
       rows.push('<div class="row"><span>Видео</span><span>' + (d.videoFile ? "прикреплено ✓" : "нет") + "</span></div>");
-      rows.push('<div class="row"><span>Ставка</span><span>' + (d.stake ? d.stake + " ₽" : "без ставки") + "</span></div>");
+      rows.push('<div class="row"><span>Обязательство</span><span>' + (d.stake ? d.stake + " ₽" : "без обязательства") + "</span></div>");
       body = "<h2>Проверь и вперёд</h2>" +
         '<div class="card">' + rows.join("") + "</div>" +
         '<div class="muted" style="text-align:center;margin-bottom:16px">' +
         (isChallenge
-          ? "Отправляем вызов сопернику" + (d.stake ? " — ставка " + d.stake + " ₽ встанет в очередь на оплату картой МИР (сейчас на подтверждении)" : "") + ". Оба стартуете вместе, как только он примет" + (d.stake ? " и оплата подтвердится" : "") + "."
+          ? "Отправляем вызов сопернику" + (d.stake ? " — обязательство " + d.stake + " ₽ встанет в очередь на оплату картой МИР (сейчас на подтверждении)" : "") + ". Оба стартуете вместе, как только он примет" + (d.stake ? " и оплата подтвердится" : "") + "."
           : (d.stake
-              ? "Подтверждаешь — ставка " + d.stake + " ₽ встанет в очередь на оплату картой МИР (сейчас на подтверждении у платёжной системы). Карточка публикуется сразу после подтверждения оплаты."
+              ? "Подтверждаешь — обязательство " + d.stake + " ₽ встанет в очередь на оплату картой МИР (сейчас на подтверждении у платёжной системы). Карточка публикуется сразу после подтверждения оплаты."
               : "Подтверждаешь — публикуем сразу, не выходя из приложения.")) +
         "</div>";
     }
@@ -1462,7 +1462,7 @@
     }
   }
 
-  // targetDraft/rerender — обобщено, чтобы этой же камерой пользовался и мастер соло-ставки
+  // targetDraft/rerender — обобщено, чтобы этой же камерой пользовался и мастер соло-обязательства
   // (ctx.draft + renderWizard), и экран принятия Вызова (ctx.challengeAcceptDraft + drawChallengeAcceptVideo)
   async function startCamera(targetDraft, rerender) {
     const videoEl = document.getElementById("camera-preview");
@@ -1534,7 +1534,7 @@
   };
 
   function stakeNoteText(n) {
-    if (!n) return "Пока без ставки — только слово.";
+    if (!n) return "Пока без обязательства — только слово.";
     if (n < 1000) return "Минимум 1 000 ₽.";
     return n + " ₽ — оплата картой МИР сейчас на подтверждении у платёжной системы, спишется, как только подключение будет готово.";
   }
@@ -1587,7 +1587,7 @@
       d.motivation = v;
     }
     if (name === "duration") {
-      if (!d.days || d.days < 1 || d.days > 365) return err("Выбери срок.");
+      if (!d.days || d.days < 1 || d.days > 330) return err("Выбери срок.");
       if (d.type === "habit" && d.days < 21) return err("Для привычки нужно минимум 21 день.");
       if (d.type === "quit" && d.days < 30) return err("Для Аскезы нужен срок минимум 30 дней.");
     }
@@ -1648,7 +1648,7 @@
         '<button class="btn-secondary" style="flex:1;margin:0" onclick="copyChallengeInvite(this)">Скопировать</button></div></div>'
       : "";
     const note = stakePending
-      ? '<div class="muted" style="text-align:center;margin-bottom:12px">Твоя ставка встала в очередь на оплату картой МИР (сейчас на подтверждении). Ждём, пока соперник примет и тоже поставит на кон.</div>'
+      ? '<div class="muted" style="text-align:center;margin-bottom:12px">Твоё обязательство встало в очередь на оплату картой МИР (сейчас на подтверждении). Ждём, пока соперник примет и тоже подтвердит рублём.</div>'
       : '<div class="muted" style="text-align:center;margin-bottom:12px">Ждём, пока соперник примет вызов.</div>';
     app.innerHTML =
       '<div class="card" style="text-align:center"><div style="font-size:40px;margin-bottom:8px">⚔️</div>' +
@@ -1740,14 +1740,14 @@
         '<div class="card" style="text-align:center"><div style="font-size:40px;margin-bottom:8px">⏳</div>' +
         '<div style="font-size:17px;margin-bottom:6px">Видео записано, но не опубликовано</div>' +
         '<div class="muted">' + (pendingApproval
-          ? "Оплата картой МИР сейчас на подтверждении у платёжной системы — карточка #" + betId + " появится, как только оплата подтвердится. Она ждёт тебя в списке ставок."
-          : "Оплата не завершена — карточка #" + betId + " появится, как только оплатишь ставку. Она ждёт тебя в списке ставок.") + "</div></div>" +
-        '<button class="btn-secondary" onclick="reloadAndHome()">К списку ставок</button>';
+          ? "Оплата картой МИР сейчас на подтверждении у платёжной системы — карточка #" + betId + " появится, как только оплата подтвердится. Она ждёт тебя в списке обязательств."
+          : "Оплата не завершена — карточка #" + betId + " появится, как только оплатишь обязательство. Она ждёт тебя в списке обязательств.") + "</div></div>" +
+        '<button class="btn-secondary" onclick="reloadAndHome()">К списку обязательств</button>';
       return;
     }
     const note = status === "processing"
       ? '<div class="muted" style="text-align:center;margin-bottom:12px">Оплата подтверждается — карточка появится в группе в течение минуты.</div>'
-      : '<div class="muted" style="text-align:center;margin-bottom:12px">Ставка оплачена.</div>';
+      : '<div class="muted" style="text-align:center;margin-bottom:12px">Обязательство оплачена.</div>';
     const wi = ctx.lastWitnessInvite;
     const witnessBlock = wi
       ? '<div class="card" style="text-align:center"><div class="muted" style="margin-bottom:8px">Нажми «Поделиться» и выбери свидетеля прямо из своих контактов в Telegram — или перешли ссылку/QR вручную:</div>' +
@@ -1762,7 +1762,7 @@
       '<div class="muted">Карточка #' + betId + " создана" + (ctx.draft.mode === "public" ? " и опубликована в группе." : ".") + "</div></div>" +
       note + witnessBlock +
       '<button onclick="goToPersonaAfterCreate(' + betId + ')">Выбрать персонажа</button>' +
-      '<button class="btn-secondary" onclick="reloadAndHome()">К списку ставок</button>';
+      '<button class="btn-secondary" onclick="reloadAndHome()">К списку обязательств</button>';
   }
 
   // ---------- шаринг ссылки-приглашения свидетелю: раньше её можно было только скриншотить ----------
@@ -1836,17 +1836,17 @@
   function publicSection(ps) {
     ps = ps || { total: 0, active: 0, kept: 0, failed: 0 };
     if (!ps.total) {
-      return '<div class="section-title">📣 Публичные ставки</div>' +
-        '<div class="muted" style="margin-bottom:8px">Пока ни одной публичной ставки — заяви о цели на людях.</div>' +
-        '<button class="btn-secondary" onclick="renderHome()">К ставкам</button>';
+      return '<div class="section-title">📣 Публичные обязательства</div>' +
+        '<div class="muted" style="margin-bottom:8px">Пока ни одного публичного обязательства — заяви о цели на людях.</div>' +
+        '<button class="btn-secondary" onclick="renderHome()">К обязательствам</button>';
     }
     const items = [[ps.total, "всего"], [ps.active, "сейчас идёт"], [ps.kept, "сдержано"], [ps.failed, "не сдержано"]];
     const grid = items.map(function (s) {
       return '<div class="stat-box"><div class="num">' + s[0] + '</div><div class="lbl">' + s[1] + "</div></div>";
     }).join("");
-    return '<div class="section-title">📣 Публичные ставки</div>' +
+    return '<div class="section-title">📣 Публичные обязательства</div>' +
       '<div class="stat-grid">' + grid + "</div>" +
-      '<button class="btn-secondary" style="margin-top:8px" onclick="renderHome()">К ставкам</button>';
+      '<button class="btn-secondary" style="margin-top:8px" onclick="renderHome()">К обязательствам</button>';
   }
 
   function drawProfile() {
@@ -1865,7 +1865,7 @@
 
     const stats = p.stats || {};
     const statItems = [
-      [stats.total, "ставок всего"], [stats.kept, "сдержано"], [stats.failed, "не сдержано"],
+      [stats.total, "обязательств всего"], [stats.kept, "сдержано"], [stats.failed, "не сдержано"],
       [stats.active, "сейчас активно"], [stats.public, "публичных"],
       [stats.best_streak, "лучшая серия"], [stats.current_streak, "текущая серия"],
     ];
@@ -1895,7 +1895,7 @@
 
     const hardest = p.hardest_bet
       ? '<div class="card hardest-card"><div class="hicon">🏔️</div><div>' +
-        '<div class="muted" style="font-size:12px">Самая сложная сдержанная ставка</div>' +
+        '<div class="muted" style="font-size:12px">Самое сложное сдержанное обязательство</div>' +
         '<div style="font-weight:600">' + esc(p.hardest_bet.goal) + "</div>" +
         '<div class="muted" style="font-size:12px">' + (p.hardest_bet.stake ? p.hardest_bet.stake + " ₽ · " : "") + p.hardest_bet.duration_days + " дн.</div>" +
         "</div></div>"
@@ -1930,7 +1930,7 @@
       '<div class="medal-shelf">' + earned + locked + "</div>" +
       hiddenNote +
 
-      '<button class="btn-secondary" onclick="renderHome()" style="margin-top:20px">К списку ставок</button>';
+      '<button class="btn-secondary" onclick="renderHome()" style="margin-top:20px">К списку обязательств</button>';
   }
 
   window.triggerAvatarUpload = function () {
