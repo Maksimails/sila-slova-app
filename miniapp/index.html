@@ -68,6 +68,13 @@
     text-shadow: 0 1px 0 #7a2a4d, 0 2px 0 #6a2242, 0 3px 4px rgba(0,0,0,.7); font-size: 17px !important; }
   .name-goblin { font-family: 'Oswald', sans-serif; font-weight: 700; letter-spacing: .02em; text-transform: uppercase;
     color: #9dff6e; text-shadow: 0 1px 0 #2a4d1a, 0 0 8px rgba(157,255,110,.55), 0 2px 4px rgba(0,0,0,.8); font-size: 14px !important; }
+  .name-gans { font-family: 'Oswald', sans-serif; font-weight: 700; letter-spacing: .02em; color: #cbd5df; text-transform: uppercase; font-size: 13px !important; }
+  .name-aglaya { font-family: 'Playfair Display', serif; font-style: italic; font-weight: 500; color: #d9cfe8; }
+  .name-vorontsov { font-family: 'Playfair Display', serif; font-weight: 600; letter-spacing: .03em; color: #cfd8e3; }
+  .name-vasya { font-family: 'Yeseva One', serif; color: #f2b56b; }
+  .name-aslan { font-family: 'Oswald', sans-serif; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; color: #ffb347; text-shadow: 0 2px 4px rgba(0,0,0,.7); }
+  .name-lyokha { font-family: 'Oswald', sans-serif; font-weight: 700; letter-spacing: .01em; color: #7fe0c8; font-size: 14px !important; }
+  .name-lera { font-family: 'Playfair Display', serif; font-style: italic; font-weight: 600; color: #b8c6d9; }
 
   /* ---------- профиль игрока ---------- */
   .profile-header { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
@@ -129,13 +136,34 @@
   const API = "https://mparfxpddlkfuixminnx.supabase.co/functions/v1/miniapp";
   const initData = tg?.initData || "";
   const TYPES = { result: "Результат", habit: "Привычка", quit: "Аскеза" };
-  const PERSONAS = { confucius: "Конфуций", arnold: "Физрук Арнольд", zina: "Баба Зина 🔞", angela: "Анжела Фокс", goblin: "Гоблин Дедлайна 👹" };
+  // живой ростер (Максим, 2026-08-24: старые Арнольд/Анжела/Гоблин убраны из выбора,
+  // но их данные и старые обязательства не трогаем — см. PERSONAS_LEGACY ниже)
+  const PERSONAS = {
+    zina: "Баба Зина 🔞",
+    gans: "Физрук Ганс",
+    aglaya: "Аглая Тихая",
+    vorontsov: "Капитан Воронцов",
+    vasya: "Кот Вася",
+    confucius: "Конфуций",
+    aslan: "Аслан Орёл",
+    lyokha: "Лёха Пиксель",
+    lera: "Лера Ницше",
+  };
+  // старые персонажи — больше не в выборе, но нужны для отображения старых обязательств
+  const PERSONAS_LEGACY = { arnold: "Физрук Арнольд", angela: "Анжела Фокс", goblin: "Гоблин Дедлайна 👹" };
+  const PERSONA_LABEL = (key) => PERSONAS[key] || PERSONAS_LEGACY[key] || key;
   // финальные портреты персонажей — те же файлы, что лежат в папке "Character Visuals",
   // залиты в этот же репозиторий на GitHub Pages рядом с index.html
   // изображения лежат в корне репозитория GitHub Pages, а этот файл — в /miniapp/,
   // поэтому путь на уровень выше (без этого префикса картинки просто 404 и не показываются)
-  const PERSONA_IMG = { confucius: "../confucius.jpg", arnold: "../coach.jpg", zina: "../baba_zina.jpg", angela: "../angela_fox.jpg", goblin: "../goblin.jpg" };
-  const PERSONA_FONT = { confucius: "name-confucius", arnold: "name-arnold", zina: "name-zina", angela: "name-angela", goblin: "name-goblin" };
+  const PERSONA_IMG = {
+    confucius: "../confucius.jpg", arnold: "../coach.jpg", zina: "../baba_zina.jpg", angela: "../angela_fox.jpg", goblin: "../goblin.jpg",
+    gans: "../gans.jpg", aglaya: "../aglaya.jpg", vorontsov: "../vorontsov.jpg", vasya: "../vasya.jpg", aslan: "../aslan.jpg", lyokha: "../lyokha.jpg", lera: "../lera.jpg",
+  };
+  const PERSONA_FONT = {
+    confucius: "name-confucius", arnold: "name-arnold", zina: "name-zina", angela: "name-angela", goblin: "name-goblin",
+    gans: "name-gans", aglaya: "name-aglaya", vorontsov: "name-vorontsov", vasya: "name-vasya", aslan: "name-aslan", lyokha: "name-lyokha", lera: "name-lera",
+  };
 
   // ---------- Мастер обязательства v2 (см. Мастер_обязательства_v2_PRD.md) ----------
   const EXAMPLES = {
@@ -347,7 +375,7 @@
           '<div class="badge">#' + b.id + "</div></div>" +
           '<div class="meta">' + TYPES[b.type] + " · " + (b.mode === "public" ? "Публично" : "Лично") +
           " · День " + dayLabel + " · ещё " + left + " дн.</div>" +
-          '<div class="meta">Персонаж: ' + (PERSONAS[b.persona] || "не выбран") + "</div>" +
+          '<div class="meta">Персонаж: ' + (b.persona ? PERSONA_LABEL(b.persona) : "не выбран") + "</div>" +
           '<div style="margin-top:6px">' + reportBadge + '</div>' +
           '<div class="bar"><i style="width:' + pct + '%"></i></div></div>';
       }).join("");
@@ -1877,7 +1905,7 @@
     const bondRows = bonds.length
       ? bonds.map(function (b) {
           const img = PERSONA_IMG[b.persona] || "";
-          const label = (PERSONAS[b.persona] || b.persona).replace(" 🔞", "");
+          const label = PERSONA_LABEL(b.persona).replace(" 🔞", "");
           return '<div class="bond-row">' + (img ? '<img src="' + img + '" alt="">' : "") +
             '<div class="bname">' + esc(label) + '</div><div class="blvl">Ур. ' + b.bond_level + " · " + b.bond_xp + " XP</div></div>";
         }).join("")
